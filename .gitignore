@@ -1,0 +1,19 @@
+# Build / publish salida
+bin/
+obj/
+publish/
+
+# Datos locales de la app
+edge-profile/
+logs/
+config.json
+selftest.txt
+ui-preview.png
+alert-preview.png
+preview-error.txt
+alerttest-log.txt
+
+# Visual Studio
+.vs/
+*.user
+*.suo

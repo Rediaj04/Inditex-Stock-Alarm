@@ -1,0 +1,12 @@
+{
+  "intervalSeconds": 15,
+  "soundEnabled": true,
+  "openInBrave": true,
+  "items": [
+    {
+      "name": "Jeans barrel",
+      "url": "https://www.bershka.com/es/jeans-barrel-c0p229733871.html?colorId=428",
+      "sizes": "44"
+    }
+  ]
+}
