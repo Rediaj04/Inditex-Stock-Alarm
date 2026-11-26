@@ -32,6 +32,7 @@ public sealed class MainForm : Form
     private long _muteUntilTicks;
     private bool _soundEnabled;
     private bool _allowFast;
+    private string? _updateTag;
 
     private Label _pill = null!;
     private Label _foot = null!;
@@ -111,6 +112,34 @@ public sealed class MainForm : Form
 
         UpdateFooter();
         await StartMonitorAsync();
+        _ = CheckUpdatesAsync();
+    }
+
+    private async Task CheckUpdatesAsync()
+    {
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("InditexStockAlarm");
+            var json = await http.GetStringAsync("https://api.github.com/repos/Rediaj04/Inditex-Stock-Alarm/releases/latest");
+            using var doc = JsonDocument.Parse(json);
+
+            if (!doc.RootElement.TryGetProperty("tag_name", out var tagEl)) return;
+            var tag = tagEl.GetString()?.TrimStart('v', 'V');
+            var url = doc.RootElement.TryGetProperty("html_url", out var u) ? u.GetString() : null;
+            var current = typeof(MainForm).Assembly.GetName().Version;
+
+            if (string.IsNullOrWhiteSpace(tag) || current is null) return;
+            if (!Version.TryParse(tag, out var latest) || latest <= current) return;
+
+            _updateTag = tag;
+            Log($"Nueva versión disponible: v{tag}" + (string.IsNullOrEmpty(url) ? "" : $" → {url}"), LogKind.Warn);
+            UpdateFooter();
+        }
+        catch
+        {
+            // sin conexión o API caída: no molestamos
+        }
     }
 
     private async void OnFormClosing(object? sender, FormClosingEventArgs e)
@@ -1173,7 +1202,9 @@ public sealed class MainForm : Form
     private void UpdateFooter()
     {
         var last = _lastCheckUtc == DateTime.MinValue ? "—" : _lastCheckUtc.ToLocalTime().ToString("HH:mm:ss");
-        var text = $"PC sin suspensión · última comprobación {last} · cada {_intervalSec} s (mín. {(_allowFast ? 5 : 15)} s) · " +
+        var version = typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "?";
+        var update = _updateTag is null ? "" : $" · NUEVA v{_updateTag}";
+        var text = $"v{version}{update} · PC sin suspensión · última comprobación {last} · cada {_intervalSec} s (mín. {(_allowFast ? 5 : 15)} s) · " +
                    $"{_items.Count} producto(s) · comprobaciones {_checks} · fallos {_failStreak} · " +
                    $"sonido {(_soundEnabled ? "on" : "off")} · Brave {(FindBrave() is null ? "no" : "ok")} · Edge {(_edge is null ? "—" : "ok")}";
 
