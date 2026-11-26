@@ -3,6 +3,7 @@
   "allowFastInterval": false,
   "soundEnabled": true,
   "openInBrave": true,
+  "ntfyTopic": "",
   "items": [
     {
       "name": "Jeans barrel",

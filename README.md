@@ -1,5 +1,11 @@
 # Inditex Stock Alarm
 
+[![build](https://github.com/Rediaj04/Inditex-Stock-Alarm/actions/workflows/build.yml/badge.svg)](https://github.com/Rediaj04/Inditex-Stock-Alarm/actions/workflows/build.yml)
+[![release](https://img.shields.io/github/v/release/Rediaj04/Inditex-Stock-Alarm)](https://github.com/Rediaj04/Inditex-Stock-Alarm/releases/latest)
+[![license](https://img.shields.io/github/license/Rediaj04/Inditex-Stock-Alarm)](LICENSE)
+![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6)
+![.NET](https://img.shields.io/badge/.NET-10-512BD4)
+
 Aplicación de escritorio para Windows que vigila la disponibilidad de las tallas que elijas en fichas de **webs de Inditex** (Bershka, Zara, Pull&Bear, Stradivarius, Oysho, Massimo Dutti…) y te avisa con alarma, ventana emergente y una pestaña abierta en Brave.
 
 > Proyecto personal, sin relación con Inditex. Úsalo de forma responsable y respetando los términos de cada web.
@@ -55,6 +61,10 @@ La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **
   - Notificación en la bandeja y parpadeo de la ventana.
 - Si la talla sigue disponible, repite el aviso cada 2 minutos (con 5 min de silencio tras pulsar OK).
 - Impide que el PC entre en suspensión mientras vigila.
+- **Iniciar con Windows** opcional desde la propia ventana (checkbox).
+- **Aviso al móvil** opcional con [ntfy](https://ntfy.sh) (push gratis, sin cuenta).
+- **Historial CSV** con cada cambio de stock (`logs\historial.csv`).
+- **Comprobación de actualizaciones** contra GitHub Releases.
 - Registro en vivo y en `logs\monitor-AAAAMMDD.log`.
 
 ![Ventana de aviso](docs/alerta.png)
@@ -79,6 +89,7 @@ La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **
   "allowFastInterval": false,
   "soundEnabled": true,
   "openInBrave": true,
+  "ntfyTopic": "",
   "items": [
     {
       "name": "Jeans barrel",
@@ -98,7 +109,26 @@ La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **
 - `allowFastInterval`: si es `true`, permite bajar de 15 s sin pasar por el aviso.
 - `soundEnabled`: sirena y voz.
 - `openInBrave`: abrir pestaña automáticamente al detectar stock.
+- `ntfyTopic`: si lo rellenas, envía un push al móvil al detectar stock (ver abajo).
 - `items`: lista de productos. También se puede editar a mano y reiniciar.
+  - **Varios colores**: añade un ítem por color (la misma ficha con otro `colorId` o `v1`). La app avisa si cualquiera tiene stock.
+
+## Aviso al móvil con ntfy (gratis, sin cuenta)
+
+1. Instala la app **ntfy** en tu móvil (Android/iOS) o abre [ntfy.sh](https://ntfy.sh).
+2. Suscríbete a un tema inventado y difícil de adivinar, por ejemplo `stock-7f3k9x2`.
+3. En `config.json` pon `"ntfyTopic": "stock-7f3k9x2"`.
+4. Reinicia la app. Al detectar stock llegará un push urgente con producto, talla, precio y enlace.
+
+El tema es público: usa un nombre largo y aleatorio. No pongas datos personales.
+
+## Iniciar con Windows
+
+Marca **Iniciar con Windows** en la cabecera de la lista de productos. Crea un acceso directo en la carpeta de inicio del usuario; desmárcalo para quitarlo.
+
+## Historial CSV
+
+Cada cambio de disponibilidad se añade a `logs\historial.csv` (fecha, hora, producto, tallas, estado, color y URL). Se abre con Excel o cualquier hoja de cálculo.
 
 ## Cómo detecta el stock
 
