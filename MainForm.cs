@@ -40,8 +40,7 @@ public sealed class MainForm : Form
     private Button _btnSilence = null!;
     private Button _btnSound = null!;
     private Button _btnLock = null!;
-    private CheckBox _chkStartup = null!;
-    private bool _startupGuard;
+    private Button _btnStartup = null!;
     private NumericUpDown _num = null!;
     private RichTextBox _log = null!;
     private FlowLayoutPanel _itemsPanel = null!;
@@ -382,10 +381,21 @@ public sealed class MainForm : Form
         catch (Exception ex)
         {
             Log("No pude cambiar el arranque con Windows: " + ex.Message, LogKind.Warn);
-            _startupGuard = true;
-            _chkStartup.Checked = !enabled;
-            _startupGuard = false;
         }
+    }
+
+    private void ApplyStartupState()
+    {
+        var on = File.Exists(StartupShortcutPath);
+        _btnStartup.Text = "Inicio con Windows: " + (on ? "ON" : "OFF");
+        _btnStartup.ForeColor = on ? Palette.Green : Palette.Muted;
+        _btnStartup.BackColor = on ? Palette.GreenBg : Palette.Chip;
+    }
+
+    private void ToggleStartup()
+    {
+        SetStartup(!File.Exists(StartupShortcutPath));
+        ApplyStartupState();
     }
 
     private void ToggleFast()
@@ -442,26 +452,17 @@ public sealed class MainForm : Form
         add.Click += (_, _) => AddItem();
         head.Controls.Add(add);
 
-        _chkStartup = new CheckBox
-        {
-            Text = "Iniciar con Windows",
-            AutoSize = true,
-            ForeColor = Palette.Muted,
-            FlatStyle = FlatStyle.Flat,
-            Cursor = Cursors.Hand,
-            Checked = File.Exists(StartupShortcutPath)
-        };
-        _chkStartup.CheckedChanged += (_, _) =>
-        {
-            if (_startupGuard) return;
-            SetStartup(_chkStartup.Checked);
-        };
-        head.Controls.Add(_chkStartup);
+        _btnStartup = MakeButton("", Palette.Chip, Palette.Muted, 186);
+        _btnStartup.Height = 26;
+        _btnStartup.Font = new Font("Segoe UI Semibold", 9f);
+        _btnStartup.Click += (_, _) => ToggleStartup();
+        head.Controls.Add(_btnStartup);
+        ApplyStartupState();
 
         head.Resize += (_, _) =>
         {
             add.Location = new Point(head.ClientSize.Width - add.Width, 0);
-            _chkStartup.Location = new Point(add.Left - _chkStartup.Width - 18, 7);
+            _btnStartup.Location = new Point(add.Left - _btnStartup.Width - 14, 0);
         };
 
         _itemsPanel = new FlowLayoutPanel

@@ -24,12 +24,12 @@ Lo único que pido (y que la licencia MIT ya exige) es **mantener el aviso de co
 
 | Web | Estado |
 | --- | --- |
-| Bershka | ✅ probado |
-| Zara | ✅ probado |
-| Pull&Bear | ⚠️ misma plataforma, probablemente funciona (sin verificar) |
-| Stradivarius | ⚠️ misma plataforma, probablemente funciona (sin verificar) |
-| Oysho | ⚠️ misma plataforma, probablemente funciona (sin verificar) |
-| Massimo Dutti | ⚠️ misma plataforma, probablemente funciona (sin verificar) |
+| Bershka | ✅ probado (talla 44) |
+| Zara | ✅ probado (talla M) |
+| Oysho | ✅ probado (talla M) |
+| Pull&Bear | ⚠️ la ficha carga, pero no expone las tallas en modo headless (pendiente) |
+| Stradivarius | ⚠️ la ficha carga, pero no expone las tallas en modo headless (pendiente) |
+| Massimo Dutti | ⚠️ sin ficha de prueba; misma plataforma |
 | Uterqüe / Zara Home | ⚠️ sin verificar |
 
 La app acepta cualquier URL de esos dominios. Si en una web no encuentra las tallas, lo muestra como **ERROR** en la fila del producto (no falla en silencio) y el log dice `sin-tallas`.
