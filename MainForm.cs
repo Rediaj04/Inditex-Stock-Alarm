@@ -8,8 +8,7 @@ public sealed class MainForm : Form
 {
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
-    private const string HeadlessArgs =
-        "--headless=new --mute-audio --window-size=1400,1000 --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\"";
+    private const string HeadlessArgs = EdgeCdp.HeadlessArgs;
 
     private readonly AppConfig _config;
     private readonly List<MonitorItem> _items = new();
@@ -175,8 +174,8 @@ public sealed class MainForm : Form
     {
         SuspendLayout();
         Text = "Inditex · Alarma de stock";
-        ClientSize = new Size(1100, 790);
-        MinimumSize = new Size(960, 680);
+        ClientSize = new Size(1100, 800);
+        MinimumSize = new Size(720, 560);
         BackColor = Palette.Bg;
         ForeColor = Palette.Text;
         Font = new Font("Segoe UI", 9.75f);
@@ -191,7 +190,7 @@ public sealed class MainForm : Form
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 44));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 56));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
@@ -226,14 +225,20 @@ public sealed class MainForm : Form
             AutoSize = true,
             Location = new Point(0, 2)
         });
-        left.Controls.Add(new Label
+
+        var subtitle = new Label
         {
             Text = "Pega cualquier ficha de Inditex, elige talla y listo: alarma + pestaña en Brave",
             Font = new Font("Segoe UI", 9f),
             ForeColor = Palette.Muted,
-            AutoSize = true,
-            Location = new Point(2, 36)
-        });
+            AutoSize = false,
+            AutoEllipsis = true,
+            Location = new Point(2, 36),
+            Size = new Size(420, 18)
+        };
+        left.Controls.Add(subtitle);
+        left.Resize += (_, _) => subtitle.Width = Math.Max(120, left.ClientSize.Width - 6);
+
         header.Controls.Add(left, 0, 0);
 
         _pill = new Label
@@ -254,10 +259,12 @@ public sealed class MainForm : Form
     {
         var bar = new FlowLayoutPanel
         {
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.Top,
             BackColor = Palette.Bg,
-            Padding = new Padding(18, 10, 18, 8),
-            WrapContents = false
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(18, 8, 18, 8),
+            WrapContents = true
         };
 
         _btnToggle = MakeButton("▶  INICIAR", Palette.Green, Color.FromArgb(8, 28, 17), 180);
@@ -558,6 +565,7 @@ public sealed class MainForm : Form
             Dock = DockStyle.Fill,
             Text = "Listo.",
             TextAlign = ContentAlignment.MiddleLeft,
+            AutoEllipsis = true,
             Padding = new Padding(18, 0, 18, 0),
             ForeColor = Palette.Muted,
             Font = new Font("Segoe UI", 8.5f)
@@ -620,7 +628,7 @@ public sealed class MainForm : Form
 
     private void AddItem()
     {
-        using var dialog = new AddItemDialog();
+        using var dialog = new AddItemDialog(ProbeSizesAsync);
         if (dialog.ShowDialog(this) != DialogResult.OK || dialog.Result is null) return;
 
         var cfg = dialog.Result;
@@ -637,6 +645,15 @@ public sealed class MainForm : Form
         _config.Save(AppPaths.DataDir);
         RefreshItems();
         Log($"Producto añadido: {item.DisplayName} · tallas {string.Join(",", item.Sizes)}", LogKind.Ok);
+    }
+
+    internal async Task<SizeProbeResult> ProbeSizesAsync(string url)
+    {
+        var edgePath = EdgeCdp.FindEdge()
+                       ?? throw new InvalidOperationException("No encuentro msedge.exe en este PC.");
+
+        _edge ??= new EdgeCdp(edgePath, Path.Combine(AppPaths.DataDir, "edge-profile"));
+        return await SizeProbeService.ProbeAsync(_edge, url);
     }
 
     private async void RemoveItem(MonitorItem item)
@@ -687,10 +704,20 @@ public sealed class MainForm : Form
 
     private Control BuildRow(MonitorItem item)
     {
+        var nameFont = new Font("Segoe UI Semibold", 10.5f);
+        var subFont = new Font("Segoe UI", 8.5f);
+        var statusFont = new Font("Segoe UI Semibold", 10f);
+
+        var nameHeight = nameFont.Height + 2;
+        var subHeight = subFont.Height + 2;
+        var statusHeight = statusFont.Height + 8;
+        var top = 10;
+        var rowHeight = Math.Max(66, top + nameHeight + 4 + subHeight + 12);
+
         var panel = new Panel
         {
-            Width = 900,
-            Height = 68,
+            Width = Math.Max(320, _itemsPanel.ClientSize.Width - 26 - SystemInformation.VerticalScrollBarWidth),
+            Height = rowHeight,
             BackColor = Palette.Card,
             Margin = new Padding(0, 0, 0, 8)
         };
@@ -704,35 +731,35 @@ public sealed class MainForm : Form
         var name = new Label
         {
             Text = item.DisplayName,
-            Font = new Font("Segoe UI Semibold", 10.5f),
+            Font = nameFont,
             ForeColor = Palette.Text,
             AutoSize = false,
             AutoEllipsis = true,
-            Location = new Point(14, 8),
-            Size = new Size(500, 20)
+            Location = new Point(14, top),
+            Size = new Size(300, nameHeight)
         };
 
         var sub = new Label
         {
             Text = "tallas " + string.Join(",", item.Sizes),
-            Font = new Font("Segoe UI", 8.5f),
+            Font = subFont,
             ForeColor = Palette.Muted,
             AutoSize = false,
             AutoEllipsis = true,
-            Location = new Point(15, 34),
-            Size = new Size(500, 18)
+            Location = new Point(15, top + nameHeight + 4),
+            Size = new Size(300, subHeight)
         };
 
         var status = new Label
         {
             Text = item.StatusText,
-            Font = new Font("Segoe UI Semibold", 10f),
+            Font = statusFont,
             ForeColor = Palette.Muted,
             AutoSize = false,
             AutoEllipsis = true,
             TextAlign = ContentAlignment.MiddleRight,
-            Location = new Point(400, 23),
-            Size = new Size(300, 22)
+            Location = new Point(320, (rowHeight - statusHeight) / 2),
+            Size = new Size(300, statusHeight)
         };
 
         var remove = new Button
@@ -752,24 +779,50 @@ public sealed class MainForm : Form
         panel.Resize += (_, _) =>
         {
             var width = panel.ClientSize.Width;
-            name.Width = Math.Max(150, width - 60);
-            sub.Width = Math.Max(150, width - 120);
-            status.Bounds = new Rectangle(300, 23, Math.Max(120, width - 300 - 52), 22);
-            remove.Location = new Point(width - 36, 20);
+            var removeX = Math.Max(40, width - remove.Width - 10);
+            remove.Location = new Point(removeX, Math.Max(0, (panel.Height - remove.Height) / 2));
+
+            var statusX = Math.Max(150, Math.Min(width / 2, width - 260));
+            name.Width = Math.Max(80, statusX - 30);
+            sub.Width = Math.Max(80, statusX - 34);
+            status.Bounds = new Rectangle(
+                statusX,
+                Math.Max(0, (panel.Height - statusHeight) / 2),
+                Math.Max(80, removeX - statusX - 10),
+                statusHeight);
         };
 
         _rows[item.Config.Url] = new ItemRow(name, sub, status, panel, remove);
         return panel;
     }
 
+    internal string DumpLayout()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"panelClient={_itemsPanel.ClientSize.Width}x{_itemsPanel.ClientSize.Height}");
+        sb.AppendLine($"hScroll visible={_itemsPanel.HorizontalScroll.Visible} max={_itemsPanel.HorizontalScroll.Maximum} large={_itemsPanel.HorizontalScroll.LargeChange}");
+        sb.AppendLine($"vScroll visible={_itemsPanel.VerticalScroll.Visible} max={_itemsPanel.VerticalScroll.Maximum}");
+        foreach (Control control in _itemsPanel.Controls)
+            sb.AppendLine($"{control.GetType().Name} w={control.Width} left={control.Left} margin={control.Margin.Left},{control.Margin.Right}");
+        return sb.ToString();
+    }
+
     private void ReflowRows()
     {
         if (_itemsPanel is null) return;
-        var width = Math.Max(520, _itemsPanel.ClientSize.Width - 26);
+        var width = Math.Max(320, _itemsPanel.ClientSize.Width - 26 - SystemInformation.VerticalScrollBarWidth);
         foreach (Control control in _itemsPanel.Controls)
         {
             if (control == _itemsEmpty) continue;
             control.Width = width;
+        }
+
+        if (_itemsPanel.HorizontalScroll.Maximum > _itemsPanel.ClientSize.Width)
+        {
+            // WinForms conserva el ancho de scroll antiguo al reducir filas: lo reiniciamos
+            _itemsPanel.AutoScroll = false;
+            _itemsPanel.AutoScroll = true;
+            _itemsPanel.PerformLayout();
         }
     }
 

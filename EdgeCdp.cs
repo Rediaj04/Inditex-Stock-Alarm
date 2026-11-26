@@ -9,6 +9,9 @@ namespace InditexStockAlarm;
 
 public sealed class EdgeCdp
 {
+    public const string HeadlessArgs =
+        "--headless=new --mute-audio --window-size=1400,1000 --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\"";
+
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(5) };
 
     private readonly string _edgePath;

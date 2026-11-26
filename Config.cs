@@ -71,7 +71,7 @@ public static class ItemUrl
         "zarahome.com"
     };
 
-    private static readonly Regex SlugSuffix = new(@"-(?:c0p|p)\d+\.html$", RegexOptions.IgnoreCase);
+    private static readonly Regex SlugSuffix = new(@"-(?:c0p|p|l)\d+(?:\.html)?$", RegexOptions.IgnoreCase);
 
     public static bool TryParse(string? url, out string colorId, out string error)
     {

@@ -29,8 +29,7 @@ public sealed class CheckPayload
 }
 
 public sealed class MonitorItem
-{
-    public MonitorItem(ItemConfig config)
+{    public MonitorItem(ItemConfig config)
     {
         Config = config;
         ItemUrl.TryParse(config.Url, out var colorId, out _);
@@ -64,4 +63,25 @@ public sealed class MonitorItem
                 : ItemUrl.GuessName(Config.Url);
 
     public string PriceText => PriceCents is int c ? (c / 100.0).ToString("0.00") + " €" : "";
+}
+
+public sealed class SizeProbe
+{
+    public string Size { get; set; } = "";
+    public string State { get; set; } = "";
+
+    public string Human => State switch
+    {
+        "SHOW" => "disponible",
+        "RUNNING_OUT" => "pocas unidades",
+        _ => "agotada"
+    };
+}
+
+public sealed class SizeProbeResult
+{
+    public bool Ok { get; set; }
+    public string? Product { get; set; }
+    public string? Reason { get; set; }
+    public List<SizeProbe> Sizes { get; set; } = new();
 }

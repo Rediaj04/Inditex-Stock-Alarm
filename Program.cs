@@ -7,6 +7,26 @@ static class Program
     [STAThread]
     static int Main(string[] args)
     {
+        var probeArg = args.FirstOrDefault(a => a.StartsWith("--probe=", StringComparison.OrdinalIgnoreCase));
+        if (probeArg is not null)
+        {
+            var edgePath = EdgeCdp.FindEdge();
+            if (edgePath is null)
+            {
+                File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "probe.txt"), "no edge");
+                return 1;
+            }
+
+            var edge = new EdgeCdp(edgePath, Path.Combine(Path.GetTempPath(), "bsk-probe-profile"), 9555);
+            var result = SizeProbeService.ProbeAsync(edge, probeArg[8..]).GetAwaiter().GetResult();
+            File.WriteAllText(
+                Path.Combine(AppContext.BaseDirectory, "probe.txt"),
+                System.Text.Json.JsonSerializer.Serialize(result,
+                    new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            edge.KillBrowser();
+            return 0;
+        }
+
         if (args.Any(a => a.Equals("--selftest", StringComparison.OrdinalIgnoreCase)))
         {
             return SelfTest.RunAsync(args).GetAwaiter().GetResult();
@@ -18,6 +38,33 @@ static class Program
             player.Alarm("Prueba de alarma. Talla cuarenta y cuatro disponible en Inditex. Corre a comprar.");
             Thread.Sleep(6000);
             player.Silence();
+            return 0;
+        }
+
+        if (args.Any(a => a.Equals("--addpreview", StringComparison.OrdinalIgnoreCase)))
+        {
+            ApplicationConfiguration.Initialize();
+
+            var dialog = new AddItemDialog();
+            var timer = new System.Windows.Forms.Timer { Interval = 3500 };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                try
+                {
+                    using var bmp = new Bitmap(dialog.Width, dialog.Height);
+                    dialog.DrawToBitmap(bmp, new Rectangle(0, 0, dialog.Width, dialog.Height));
+                    bmp.Save(Path.Combine(AppContext.BaseDirectory, "add-preview.png"));
+                }
+                catch
+                {
+                    // ignored
+                }
+                dialog.Close();
+            };
+            dialog.Shown += (_, _) => timer.Start();
+
+            Application.Run(dialog);
             return 0;
         }
 
@@ -62,9 +109,25 @@ static class Program
             ApplicationConfiguration.Initialize();
 
             var main = new MainForm();
+
+            var widthArg = args.FirstOrDefault(a => a.StartsWith("--w=", StringComparison.OrdinalIgnoreCase));
+            var heightArg = args.FirstOrDefault(a => a.StartsWith("--h=", StringComparison.OrdinalIgnoreCase));
+            if (widthArg is not null && int.TryParse(widthArg[4..], out var previewWidth))
+                main.ClientSize = new Size(previewWidth, main.ClientSize.Height);
+            if (heightArg is not null && int.TryParse(heightArg[4..], out var previewHeight))
+                main.ClientSize = new Size(main.ClientSize.Width, previewHeight);
+
             main.Shown += async (_, _) =>
             {
                 await Task.Delay(14000);
+                try
+                {
+                    File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "ui-layout.txt"), main.DumpLayout());
+                }
+                catch
+                {
+                    // ignored
+                }
                 try
                 {
                     using var bmp = new Bitmap(main.Width, main.Height);

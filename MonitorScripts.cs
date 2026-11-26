@@ -7,6 +7,144 @@ internal static class MonitorScripts
     public static string ReadyScript() =>
         "!!document.querySelector('button.size-button, button.size-selector-sizes-size__button, button.size-item, [data-qa-action=\"size-in\"], .size-selector-sizes__size, [data-qa-action=\"add-to-cart\"]')";
 
+    public static string ListSizesScript() => """
+(async () => {
+  const SIZE_SELECTOR = [
+    'button.size-button',
+    'button.size-selector-sizes-size__button',
+    'button.size-item',
+    '[data-qa-action="size-in"]',
+    '.size-selector-sizes__size'
+  ].join(',');
+
+  const KNOWN = /^(XXS|XS|S|M|L|XL|XXL|XXXL|XXXXL|\d{1,3}|[UÚ]nica?|[UÚ]nico|Talla [UÚ]nica)$/i;
+
+  function visible(el) {
+    return !!(el && (el.getClientRects().length || el.offsetParent));
+  }
+
+  function stateOf(el) {
+    let node = el;
+    let depth = 0;
+    while (node && node.nodeType === 1 && depth < 5) {
+      const cls = typeof node.className === 'string' ? node.className : '';
+      if (node.disabled === true) return 'SOLD_OUT';
+      if (node.getAttribute && node.getAttribute('aria-disabled') === 'true') return 'SOLD_OUT';
+      if (/disabled|unavailable|out-?of-?stock|sold-?out|agotad|no-?stock|sin-?stock|size-no-stock/i.test(cls)) return 'SOLD_OUT';
+      if (/low-?stock|last-?units|last-?items|pocas|ultimas|últimas/i.test(cls)) return 'RUNNING_OUT';
+      node = node.parentElement;
+      depth++;
+    }
+    return 'SHOW';
+  }
+
+  function clean(text) {
+    return (text || '')
+      .replace(/ver similares/ig, '')
+      .replace(/av[ií]same/ig, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function notCarousel(el) {
+    let p = el;
+    let d = 0;
+    while (p && p.nodeType === 1 && d < 7) {
+      const c = typeof p.className === 'string' ? p.className : '';
+      if (/grid-product|product-carousel|recommend|similar-products|other-products|complete-the-look/i.test(c)) return false;
+      p = p.parentElement;
+      d++;
+    }
+    return true;
+  }
+
+  function scan() {
+    const nodes = Array.from(document.querySelectorAll(SIZE_SELECTOR));
+    const generic = Array.from(document.querySelectorAll('button, [role="button"], [role="radio"], li'))
+      .filter(function (e) {
+        const t = clean(e.textContent);
+        if (t.length === 0 || t.length > 10 || !KNOWN.test(t)) return false;
+        let p = e;
+        let d = 0;
+        while (p && d < 6) {
+          const c = typeof p.className === 'string' ? p.className : '';
+          if (/size/i.test(c) || /size/i.test(p.id || '')) return true;
+          p = p.parentElement;
+          d++;
+        }
+        return false;
+      });
+
+    const all = nodes.concat(generic).filter(visible).filter(notCarousel);
+    const out = [];
+    const seen = {};
+
+    for (const el of all) {
+      const t = clean(el.textContent);
+      if (!t || t.length > 10 || seen[t]) continue;
+      const btn = el.tagName === 'BUTTON' ? el : (el.querySelector('button') || el);
+      seen[t] = true;
+      out.push({ size: t, state: stateOf(btn) });
+    }
+    return out;
+  }
+
+  function scanSelects() {
+    const out = [];
+    for (const sel of Array.from(document.querySelectorAll('select')).filter(visible)) {
+      for (const opt of Array.from(sel.options || [])) {
+        const t = clean(opt.textContent);
+        if (t && KNOWN.test(t)) out.push({ size: t, state: opt.disabled ? 'SOLD_OUT' : 'SHOW' });
+      }
+    }
+    return out;
+  }
+
+  const accept = Array.from(document.querySelectorAll('button, a, [role="button"]')).find(function (b) {
+    if (!visible(b)) return false;
+    const t = (b.textContent || '').trim();
+    return /^(aceptar( todas)?( las)? cookies|aceptar todas|aceptar y continuar|aceptar|acepto|accept all( cookies)?|accept cookies|accept)$/i.test(t);
+  });
+  if (accept) {
+    try { accept.click(); } catch (e) {}
+    await new Promise(function (r) { setTimeout(r, 1800); });
+  }
+
+  let sizes = scan();
+
+  if (!sizes.length) {
+    const add = document.querySelector('[data-qa-action="add-to-cart"]') ||
+      Array.from(document.querySelectorAll('button')).find(function (b) {
+        return /^(añadir|agregar|comprar|add to (bag|cart|basket))$/i.test((b.textContent || '').trim());
+      });
+    if (add) {
+      try { add.click(); } catch (e) {}
+      await new Promise(function (r) { setTimeout(r, 1600); });
+      sizes = scan();
+    }
+  }
+
+  if (!sizes.length) {
+    try { window.scrollTo(0, 900); } catch (e) {}
+    await new Promise(function (r) { setTimeout(r, 900); });
+    sizes = scan();
+  }
+
+  if (!sizes.length) sizes = scanSelects();
+
+  const h1 = document.querySelector('h1');
+  let product = h1 ? h1.textContent.trim() : '';
+  if (!product) product = (document.title || '').split(' | ')[0].trim();
+
+  return JSON.stringify({
+    ok: sizes.length > 0,
+    product: product,
+    sizes: sizes.slice(0, 40),
+    reason: sizes.length ? null : 'sin-tallas'
+  });
+})()
+""";
+
     public static string SizeScript(string[] sizes)
     {
         var sizesJson = JsonSerializer.Serialize(sizes);
@@ -51,6 +189,18 @@ internal static class MonitorScripts
     return 'SHOW';
   }
 
+  function notCarousel(el) {
+    let p = el;
+    let d = 0;
+    while (p && p.nodeType === 1 && d < 7) {
+      const c = typeof p.className === 'string' ? p.className : '';
+      if (/grid-product|product-carousel|recommend|similar-products|other-products|complete-the-look/i.test(c)) return false;
+      p = p.parentElement;
+      d++;
+    }
+    return true;
+  }
+
   function collect() {
     const nodes = Array.from(document.querySelectorAll(SIZE_SELECTOR));
     const generic = Array.from(document.querySelectorAll('button, [role="button"], [role="radio"], li'))
@@ -67,7 +217,7 @@ internal static class MonitorScripts
         }
         return false;
       });
-    return nodes.concat(generic).filter(visible);
+    return nodes.concat(generic).filter(visible).filter(notCarousel);
   }
 
   function read() {
