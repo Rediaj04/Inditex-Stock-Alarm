@@ -19,6 +19,9 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Tests
+        run: dotnet test tests/InditexStockAlarm.Tests/InditexStockAlarm.Tests.csproj -c Release
+
       - name: Publicar portable autocontenido
         run: >
           dotnet publish -c Release -r win-x64 --self-contained true
