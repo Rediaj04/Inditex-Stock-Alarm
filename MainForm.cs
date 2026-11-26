@@ -40,6 +40,8 @@ public sealed class MainForm : Form
     private Button _btnSilence = null!;
     private Button _btnSound = null!;
     private Button _btnLock = null!;
+    private CheckBox _chkStartup = null!;
+    private bool _startupGuard;
     private NumericUpDown _num = null!;
     private RichTextBox _log = null!;
     private FlowLayoutPanel _itemsPanel = null!;
@@ -340,9 +342,46 @@ public sealed class MainForm : Form
         _btnSound.ForeColor = _soundEnabled ? Palette.Green : Palette.Muted;
     }
 
-    private void ToggleFast()
+    private static string StartupShortcutPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.Startup), "InditexStockAlarm.lnk");
+
+    private void SetStartup(bool enabled)
     {
-        if (!_allowFast)
+        try
+        {
+            var path = StartupShortcutPath;
+
+            if (enabled)
+            {
+                var type = Type.GetTypeFromProgID("WScript.Shell");
+                if (type is null) throw new InvalidOperationException("WScript.Shell no está disponible.");
+
+                dynamic shell = Activator.CreateInstance(type)!;
+                dynamic lnk = shell.CreateShortcut(path);
+                lnk.TargetPath = Application.ExecutablePath;
+                lnk.WorkingDirectory = AppPaths.DataDir;
+                lnk.IconLocation = Application.ExecutablePath + ",0";
+                lnk.Description = "Inditex Stock Alarm";
+                lnk.Save();
+                Log("Arranque con Windows ACTIVADO.", LogKind.Ok);
+            }
+            else if (File.Exists(path))
+            {
+                File.Delete(path);
+                Log("Arranque con Windows desactivado.", LogKind.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log("No pude cambiar el arranque con Windows: " + ex.Message, LogKind.Warn);
+            _startupGuard = true;
+            _chkStartup.Checked = !enabled;
+            _startupGuard = false;
+        }
+    }
+
+    private void ToggleFast()
+    {        if (!_allowFast)
         {
             using var dialog = new FastIntervalDialog();
             if (dialog.ShowDialog(this) != DialogResult.OK) return;
@@ -394,7 +433,28 @@ public sealed class MainForm : Form
         add.Font = new Font("Segoe UI Semibold", 9f);
         add.Click += (_, _) => AddItem();
         head.Controls.Add(add);
-        head.Resize += (_, _) => add.Location = new Point(head.ClientSize.Width - add.Width, 0);
+
+        _chkStartup = new CheckBox
+        {
+            Text = "Iniciar con Windows",
+            AutoSize = true,
+            ForeColor = Palette.Muted,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand,
+            Checked = File.Exists(StartupShortcutPath)
+        };
+        _chkStartup.CheckedChanged += (_, _) =>
+        {
+            if (_startupGuard) return;
+            SetStartup(_chkStartup.Checked);
+        };
+        head.Controls.Add(_chkStartup);
+
+        head.Resize += (_, _) =>
+        {
+            add.Location = new Point(head.ClientSize.Width - add.Width, 0);
+            _chkStartup.Location = new Point(add.Left - _chkStartup.Width - 18, 7);
+        };
 
         _itemsPanel = new FlowLayoutPanel
         {
