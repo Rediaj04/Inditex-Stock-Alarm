@@ -28,7 +28,7 @@ Lo único que pido (y que la licencia MIT ya exige) es **mantener el aviso de co
 | Zara | ✅ probado (talla M) |
 | Oysho | ✅ probado (talla M) |
 | Stradivarius | ✅ probado (talla M) |
-| Pull&Bear | ❌ su web no renderiza la ficha en modo headless (bloqueo) |
+| Pull&Bear | ✅ probado por API (su web bloquea el headless, pero la API responde) |
 | Massimo Dutti | ⚠️ sin ficha de prueba; misma plataforma |
 | Uterqüe / Zara Home | ⚠️ sin verificar |
 
@@ -52,6 +52,9 @@ La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **
 ## Qué hace
 
 - Añades productos pegando su URL y escribiendo la talla (o varias: `42,44,46`, o letras: `S,M,L`).
+- **Modo API**: tras la primera carga consulta el JSON interno de la ficha (más rápido, menos peticiones y funciona en webs que bloquean el headless, como Pull&Bear).
+- **Precio y color** reales desde esa API.
+- **Backoff**: si algo falla, espera cada vez más antes de reintentar (evita empeorar un bloqueo).
 - **Búsqueda de tallas**: al añadir un producto, pulsa **Buscar tallas** y la app abre la ficha en segundo plano para listar las tallas reales (M, L, 44, Única…) con su estado. Marcas las que quieras vigilar.
 - Consulta el stock cada 15 s (mínimo recomendado) en un **Edge oculto en segundo plano**, así que no te abre ventanas de Edge.
 - **Candado de 15 s**: el intervalo no baja de 15 s. Si pulsas el candado `🔒 mín. 15 s`, sale un aviso en rojo explicando las consecuencias; si lo aceptas, se desbloquea hasta 5 s (bajo tu responsabilidad).
@@ -141,13 +144,20 @@ Cada cambio de disponibilidad se añade a `logs\historial.csv` (fecha, hora, pro
 
 ## Cómo detecta el stock
 
-Carga la ficha en un Edge headless y lee las tallas de la página:
+1. **API (preferido)**: descubre el `storeId` y el `productId` de la ficha (`pelement`, `c0p…` o el HTML), resuelve el bundle si lo hay y consulta el JSON interno `itxrest`. De ahí salen tallas, estado, color y precio. Las siguientes comprobaciones van directas a ese JSON, sin recargar la página.
+2. **DOM (respaldo)**: si la API no responde, recarga la ficha y lee los botones de talla:
+   - Bershka y similares: `button.size-button` (deshabilitado = agotada; `--low-stock` = pocas).
+   - Zara: el selector aparece al pulsar “Añadir”; la app lo abre solo para leer las tallas.
+   - Stradivarius: `button.size-item`; se aceptan cookies/ubicación y se ignora el carrusel de recomendados.
+3. Si nada funciona, la fila muestra **ERROR** con el motivo y el log lo detalla (`sin-tallas`, `api-http`…).
 
-- Bershka y similares: botones `button.size-button` (deshabilitado = agotada; `--low-stock` = pocas).
-- Zara: el selector aparece al pulsar “Añadir”; la app lo abre solo para leer las tallas (`button.size-selector-sizes-size__button`), nunca confirma la compra.
-- Además hay un buscador genérico: botones/elementos clicables cuyo texto coincide con la talla y que están dentro de un contenedor con “size” en su clase o id.
+## Pruebas
 
-Se recarga la ficha en cada comprobación (con imágenes y fuentes bloqueadas para que sea ligero).
+```bat
+dotnet test tests/InditexStockAlarm.Tests/InditexStockAlarm.Tests.csproj -c Release
+```
+
+Cubren el parseo de URLs (Bershka, Zara, Pull&Bear), tallas (`44`, `M,L`), nombres deducidos y guardado/carga de `config.json`. El workflow de GitHub Actions ejecuta los tests en cada push antes de compilar.
 
 ## Compilar
 
