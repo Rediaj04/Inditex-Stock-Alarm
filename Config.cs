@@ -9,6 +9,7 @@ public sealed class AppConfig
     public bool AllowFastInterval { get; set; }
     public bool SoundEnabled { get; set; } = true;
     public bool OpenInBrave { get; set; } = true;
+    public string NtfyTopic { get; set; } = "";
     public List<ItemConfig> Items { get; set; } = new();
 
     private static readonly JsonSerializerOptions WriteOpts = new() { WriteIndented = true };

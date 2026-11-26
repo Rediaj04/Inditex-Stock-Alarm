@@ -1089,6 +1089,7 @@ public sealed class MainForm : Form
 
         ShowAlert(new AlertItem(item.DisplayName, detail + " · " + sizesAvailable, item.PriceText, item.Config.Url), test: false);
         _alarm.Alarm($"¡Atención! Hay stock en {item.DisplayName}. Pulsa el botón grande cuando lo veas.");
+        SendPush(item);
 
         void Ui()
         {
@@ -1194,9 +1195,37 @@ public sealed class MainForm : Form
         foreach (var item in candidates) OpenInBrave(item.Config.Url);
     }
 
-    private void OpenInBrave(string url)
+    private void SendPush(MonitorItem item)
     {
-        try
+        var topic = (_config.NtfyTopic ?? "").Trim();
+        if (topic.Length == 0) return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+                using var request = new HttpRequestMessage(
+                    HttpMethod.Post, "https://ntfy.sh/" + Uri.EscapeDataString(topic));
+
+                request.Headers.TryAddWithoutValidation("Title", "Stock: " + item.DisplayName);
+                request.Headers.TryAddWithoutValidation("Priority", "urgent");
+                request.Headers.TryAddWithoutValidation("Tags", "rotating_light");
+                request.Content = new StringContent(
+                    $"{item.StatusText}\n{item.PriceText}\n{item.Config.Url}".Trim());
+
+                await http.SendAsync(request);
+                Log("Aviso push enviado a ntfy.", LogKind.Info);
+            }
+            catch (Exception ex)
+            {
+                Log("No pude enviar el aviso push: " + ex.Message, LogKind.Warn);
+            }
+        });
+    }
+
+    private void OpenInBrave(string url)
+    {        try
         {
             var brave = FindBrave();
             if (brave is not null)
