@@ -44,7 +44,7 @@ public sealed class MainForm : Form
 
     public MainForm()
     {
-        _config = AppConfig.Load(AppContext.BaseDirectory);
+        _config = AppConfig.Load(AppPaths.DataDir);
         _intervalSec = Math.Clamp(_config.IntervalSeconds, 15, 120);
         _soundEnabled = _config.SoundEnabled;
         _alarm.Enabled = _soundEnabled;
@@ -55,7 +55,7 @@ public sealed class MainForm : Form
                 _items.Add(new MonitorItem(itemConfig));
         }
 
-        _logDir = Path.Combine(AppContext.BaseDirectory, "logs");
+        _logDir = Path.Combine(AppPaths.DataDir, "logs");
         Directory.CreateDirectory(_logDir);
 
         BuildUi();
@@ -99,6 +99,13 @@ public sealed class MainForm : Form
         await Task.Delay(250);
         Log("Aplicación lista.", LogKind.Info);
         RefreshItems();
+
+        if (_items.Count == 0)
+        {
+            Log("Primera vez: añade tu primer producto (URL de Bershka + talla).", LogKind.Info);
+            AddItem();
+        }
+
         UpdateFooter();
         await StartMonitorAsync();
     }
@@ -236,7 +243,7 @@ public sealed class MainForm : Form
         {
             _intervalSec = (int)_num.Value;
             _config.IntervalSeconds = _intervalSec;
-            _config.Save(AppContext.BaseDirectory);
+            _config.Save(AppPaths.DataDir);
             UpdateFooter();
         };
 
@@ -255,7 +262,7 @@ public sealed class MainForm : Form
             _soundEnabled = !_soundEnabled;
             ApplySoundState();
             _config.SoundEnabled = _soundEnabled;
-            _config.Save(AppContext.BaseDirectory);
+            _config.Save(AppPaths.DataDir);
             if (!_soundEnabled) _alarm.Silence();
             Log(_soundEnabled ? "Sonido de alarma ACTIVADO." : "Sonido de alarma SILENCIADO.", LogKind.Info);
         };
@@ -491,7 +498,7 @@ public sealed class MainForm : Form
         var item = new MonitorItem(cfg);
         _items.Add(item);
         _config.Items.Add(cfg);
-        _config.Save(AppContext.BaseDirectory);
+        _config.Save(AppPaths.DataDir);
         RefreshItems();
         Log($"Producto añadido: {item.DisplayName} · tallas {string.Join(",", item.Sizes)}", LogKind.Ok);
     }
@@ -500,7 +507,7 @@ public sealed class MainForm : Form
     {
         _items.Remove(item);
         _config.Items.RemoveAll(c => string.Equals(c.Url, item.Config.Url, StringComparison.OrdinalIgnoreCase));
-        _config.Save(AppContext.BaseDirectory);
+        _config.Save(AppPaths.DataDir);
 
         var page = item.Page;
         item.Page = null;
@@ -679,7 +686,7 @@ public sealed class MainForm : Form
             var edgePath = EdgeCdp.FindEdge()
                            ?? throw new InvalidOperationException("No encuentro msedge.exe en este PC.");
 
-            _edge ??= new EdgeCdp(edgePath, Path.Combine(AppContext.BaseDirectory, "edge-profile"));
+            _edge ??= new EdgeCdp(edgePath, Path.Combine(AppPaths.DataDir, "edge-profile"));
             await _edge.StartAsync(_items[0].Config.Url, ct, HeadlessArgs);
             Log("Edge conectado en segundo plano.", LogKind.Ok);
 
@@ -887,11 +894,8 @@ public sealed class MainForm : Form
                 UpdateRow(item);
                 parts.Add($"{item.DisplayName}: error");
                 continue;
-
-                continue;
             }
 
-            item.ApiMissing = false;
             item.LastError = null;
             if (!string.IsNullOrWhiteSpace(payload.Product)) item.ProductName = payload.Product!;
             if (!string.IsNullOrWhiteSpace(payload.Color))
@@ -1091,7 +1095,26 @@ public sealed class MainForm : Form
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "BraveSoftware", "Brave-Browser", "Application", "brave.exe")
         };
-        return candidates.FirstOrDefault(File.Exists);
+
+        var found = candidates.FirstOrDefault(File.Exists);
+        if (found is not null) return found;
+
+        try
+        {
+            foreach (var root in new[] { Microsoft.Win32.Registry.LocalMachine, Microsoft.Win32.Registry.CurrentUser })
+            {
+                using var key = root.OpenSubKey(
+                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\brave.exe");
+                if (key?.GetValue(null) is string path && !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                    return path;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        return null;
     }
 
     // ---------------------------------------------------------------- helpers

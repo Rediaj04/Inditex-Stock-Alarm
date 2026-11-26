@@ -32,9 +32,33 @@ public sealed class EdgeCdp
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
                 "Microsoft", "Edge", "Application", "msedge.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "Microsoft", "Edge", "Application", "msedge.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Microsoft", "Edge", "Application", "msedge.exe")
         };
-        return candidates.FirstOrDefault(File.Exists);
+
+        var found = candidates.FirstOrDefault(File.Exists);
+        return found ?? FromAppPaths("msedge.exe");
+    }
+
+    private static string? FromAppPaths(string exeName)
+    {
+        try
+        {
+            foreach (var root in new[] { Microsoft.Win32.Registry.LocalMachine, Microsoft.Win32.Registry.CurrentUser })
+            {
+                using var key = root.OpenSubKey(
+                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\" + exeName);
+                if (key?.GetValue(null) is string path && !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                    return path;
+            }
+        }
+        catch
+        {
+            // ignored
+        }
+
+        return null;
     }
 
     public async Task<bool> PingAsync(CancellationToken ct = default)

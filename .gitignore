@@ -2,6 +2,7 @@
 bin/
 obj/
 publish/
+release/
 
 # Datos locales de la app
 edge-profile/

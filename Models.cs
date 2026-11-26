@@ -55,7 +55,6 @@ public sealed class MonitorItem
     public int? PriceCents { get; set; }
     public long LastAlertTicks { get; set; }
     public string? LastError { get; set; }
-    public bool ApiMissing { get; set; }
 
     public string DisplayName =>
         !string.IsNullOrWhiteSpace(Config.Name)

@@ -6,6 +6,14 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>BershkaMonitor</AssemblyName>
+    <RootNamespace>BershkaMonitor</RootNamespace>
+    <Version>1.0.0</Version>
+    <Product>Bershka Monitor</Product>
+    <Company>Bershka Monitor contributors</Company>
+    <Description>Vigila tallas de cualquier ficha de Bershka y avisa con alarma, ventana emergente y pestaña en Brave.</Description>
+    <LangVersion>latest</LangVersion>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
 </Project>
