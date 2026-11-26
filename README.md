@@ -52,6 +52,7 @@ La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **
 ## Qué hace
 
 - Añades productos pegando su URL y escribiendo la talla (o varias: `42,44,46`, o letras: `S,M,L`).
+- **Búsqueda de tallas**: al añadir un producto, pulsa **Buscar tallas** y la app abre la ficha en segundo plano para listar las tallas reales (M, L, 44, Única…) con su estado. Marcas las que quieras vigilar.
 - Consulta el stock cada 15 s (mínimo recomendado) en un **Edge oculto en segundo plano**, así que no te abre ventanas de Edge.
 - **Candado de 15 s**: el intervalo no baja de 15 s. Si pulsas el candado `🔒 mín. 15 s`, sale un aviso en rojo explicando las consecuencias; si lo aceptas, se desbloquea hasta 5 s (bajo tu responsabilidad).
 - Cuando la talla pasa a disponible:
@@ -71,11 +72,19 @@ La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **
 
 ## Uso
 
-1. Pulsa **＋ Añadir producto**, pega la URL de la ficha y escribe la talla.
+1. Pulsa **＋ Añadir producto**, pega la URL y pulsa **Buscar tallas**.
+   - La app abre la ficha en un Edge oculto y te muestra las tallas reales con su estado.
+   - Marca las tallas que quieras vigilar (viene marcadas las disponibles).
+   - Si esa web no deja leerlas, escríbelas a mano (`44`, `M,L`, `Única`…).
    - El color se toma del parámetro `colorId` de la URL o de la propia URL (Zara usa `v1`).
-   - Puedes poner varias tallas separadas por comas.
 2. Pulsa **INICIAR** (arranca solo al abrir).
 3. Deja la app abierta o minimizada en la bandeja.
+
+La ventana se adapta a tamaños pequeños: los botones se envuelven y las filas no se recortan.
+
+![Ventana pequeña](docs/app-small.png)
+
+![Añadir producto](docs/add.png)
 
 > La talla no se puede preseleccionar por URL: la pestaña se abre en la ficha y color correctos, y tú tocas la talla y “Añadir a la cesta”.
 
