@@ -27,8 +27,8 @@ Lo único que pido (y que la licencia MIT ya exige) es **mantener el aviso de co
 | Bershka | ✅ probado (talla 44) |
 | Zara | ✅ probado (talla M) |
 | Oysho | ✅ probado (talla M) |
-| Pull&Bear | ⚠️ la ficha carga, pero no expone las tallas en modo headless (pendiente) |
-| Stradivarius | ⚠️ la ficha carga, pero no expone las tallas en modo headless (pendiente) |
+| Stradivarius | ✅ probado (talla M) |
+| Pull&Bear | ❌ su web no renderiza la ficha en modo headless (bloqueo) |
 | Massimo Dutti | ⚠️ sin ficha de prueba; misma plataforma |
 | Uterqüe / Zara Home | ⚠️ sin verificar |
 
