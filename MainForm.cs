@@ -618,7 +618,9 @@ public sealed class MainForm : Form
             Font = new Font("Segoe UI Semibold", 9.75f),
             Cursor = Cursors.Hand,
             Margin = new Padding(0, 0, 10, 0),
-            TabStop = false
+            TabStop = true,
+            AccessibleRole = AccessibleRole.PushButton,
+            AccessibleName = text
         };
         button.FlatAppearance.BorderSize = 0;
         return button;
