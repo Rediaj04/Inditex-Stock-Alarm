@@ -108,13 +108,21 @@ public static class ItemUrl
             return false;
         }
 
+        var color = "";
+        var cs = "";
+
         foreach (var part in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
         {
             var kv = part.Split('=', 2);
-            if (kv.Length == 2 && kv[0].Equals("colorId", StringComparison.OrdinalIgnoreCase))
-                colorId = Uri.UnescapeDataString(kv[1]);
+            if (kv.Length != 2) continue;
+
+            if (kv[0].Equals("colorId", StringComparison.OrdinalIgnoreCase))
+                color = Uri.UnescapeDataString(kv[1]);
+            else if (kv[0].Equals("cS", StringComparison.OrdinalIgnoreCase))
+                cs = Uri.UnescapeDataString(kv[1]);
         }
 
+        colorId = color.Length > 0 ? color : cs;
         return true;
     }
 
