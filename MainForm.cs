@@ -1052,6 +1052,9 @@ public sealed class MainForm : Form
             UpdateRow(item);
             parts.Add($"{item.DisplayName}: {item.StatusText}");
 
+            if (wasAvailable != item.Available)
+                AppendHistory(item);
+
             var nowTicks = DateTime.UtcNow.Ticks;
             var transition = item.Available && !wasAvailable;
             var repeat = item.Available && wasAvailable &&
@@ -1273,9 +1276,44 @@ public sealed class MainForm : Form
         else Apply();
     }
 
-    private void Log(string message, LogKind kind)
+    private void AppendHistory(MonitorItem item)
     {
-        var line = $"{DateTime.Now:HH:mm:ss}  {message}";
+        try
+        {
+            Directory.CreateDirectory(_logDir);
+            var path = Path.Combine(_logDir, "historial.csv");
+            var utf8 = new UTF8Encoding(true);
+
+            if (!File.Exists(path))
+                File.AppendAllText(path,
+                    "fecha;hora;producto;tallas;estado;color;url" + Environment.NewLine, utf8);
+
+            var line = string.Join(";", new[]
+            {
+                DateTime.Now.ToString("yyyy-MM-dd"),
+                DateTime.Now.ToString("HH:mm:ss"),
+                Clean(item.DisplayName),
+                Clean(string.Join("/", item.Sizes)),
+                item.Available ? "DISPONIBLE" : "AGOTADA",
+                Clean(item.ColorName),
+                Clean(item.Config.Url)
+            });
+
+            File.AppendAllText(path, line + Environment.NewLine, utf8);
+            Log($"Cambio de stock: {item.DisplayName} · {(item.Available ? "DISPONIBLE" : "agotada")}",
+                item.Available ? LogKind.Ok : LogKind.Info);
+        }
+        catch
+        {
+            // el historial es opcional
+        }
+    }
+
+    private static string Clean(string? text) =>
+        (text ?? "").Replace(';', ',').Replace('\r', ' ').Replace('\n', ' ');
+
+    private void Log(string message, LogKind kind)
+    {        var line = $"{DateTime.Now:HH:mm:ss}  {message}";
         try
         {
             File.AppendAllText(
