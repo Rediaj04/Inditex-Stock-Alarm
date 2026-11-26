@@ -24,6 +24,9 @@ public sealed class CheckPayload
     public bool Ok { get; set; }
     public string? Product { get; set; }
     public string? Color { get; set; }
+    public string? StoreId { get; set; }
+    public string? ProductId { get; set; }
+    public string? ColorId { get; set; }
     public string? Reason { get; set; }
     public List<SizeResult> Sizes { get; set; } = new();
 }
@@ -44,6 +47,9 @@ public sealed class MonitorItem
 
     public CdpPage? Page { get; set; }
     public bool FreshlyLoaded { get; set; }
+    public string? ApiStoreId { get; set; }
+    public string? ApiProductId { get; set; }
+    public string? ApiColorId { get; set; }
     public string ProductName { get; set; } = "";
     public string ColorName { get; set; } = "";
     public bool Available { get; set; }

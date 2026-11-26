@@ -145,6 +145,142 @@ internal static class MonitorScripts
 })()
 """;
 
+    public static string ResolveApiScript(string colorHint) => $$"""
+(async () => {
+  const colorHint = {{JsonSerializer.Serialize(colorHint ?? "")}};
+
+  let storeId = null;
+  for (const n of performance.getEntriesByType('resource').map(function (e) { return e.name; })) {
+    const m = n.match(/\/catalog\/store\/(\d+)/);
+    if (m) { storeId = m[1]; break; }
+  }
+  if (!storeId) {
+    const m = document.documentElement.innerHTML.match(/"storeId"\s*:\s*"?(\d{5,})/);
+    if (m) storeId = m[1];
+  }
+  if (!storeId) return JSON.stringify({ ok: false, reason: 'sin-store' });
+
+  const q = new URLSearchParams(location.search);
+  let productId = q.get('pelement');
+  if (!productId) {
+    const m = location.pathname.match(/-c0p(\d+)\.html/);
+    if (m) productId = m[1];
+  }
+  if (!productId) {
+    const m = document.documentElement.innerHTML.match(/"productId"\s*:\s*(\d{5,})/);
+    if (m) productId = m[1];
+  }
+  if (!productId) return JSON.stringify({ ok: false, reason: 'sin-producto' });
+
+  const colorId = colorHint || q.get('colorId') || q.get('cS') || '';
+
+  async function detail(pid) {
+    const url = '/itxrest/2/catalog/store/' + storeId + '/0/category/0/product/' + pid + '/detail?languageId=-5&appId=1';
+    try {
+      const r = await fetch(url, { headers: { accept: 'application/json' } });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (e) { return null; }
+  }
+
+  function aggregate(colors) {
+    const c = colors.find(function (x) { return String(x.id) === String(colorId); }) || colors[0];
+    const map = {};
+    const order = [];
+    for (const s of (c.sizes || [])) {
+      const name = (s.name || '').trim();
+      if (!name) continue;
+      if (!map[name]) {
+        map[name] = { size: name, visibility: 'SOLD_OUT', price: s.price ? Number(s.price) : null };
+        order.push(name);
+      }
+      const cur = map[name];
+      if (s.visibilityValue === 'SHOW') cur.visibility = 'SHOW';
+      else if (s.visibilityValue === 'RUNNING_OUT' && cur.visibility !== 'SHOW') cur.visibility = 'RUNNING_OUT';
+      if (cur.price === null && s.price) cur.price = Number(s.price);
+    }
+    return { color: c, sizes: order.map(function (n) { return map[n]; }) };
+  }
+
+  let j = await detail(productId);
+  if (!j) return JSON.stringify({ ok: false, reason: 'api-http' });
+
+  let colors = (j.detail && j.detail.colors) || [];
+  if (!colors.length) {
+    const alt = j.alternativeProductId || ((j.bundleProductSummaries || [])[0] || {}).id;
+    if (!alt) return JSON.stringify({ ok: false, reason: 'sin-colores' });
+    j = await detail(alt);
+    if (!j) return JSON.stringify({ ok: false, reason: 'api-http' });
+    colors = (j.detail && j.detail.colors) || [];
+  }
+  if (!colors.length) return JSON.stringify({ ok: false, reason: 'sin-colores' });
+
+  const agg = aggregate(colors);
+  return JSON.stringify({
+    ok: true,
+    storeId: String(storeId),
+    productId: String(j.id || productId),
+    colorId: String(agg.color.id),
+    product: j.name,
+    color: agg.color.name,
+    sizes: agg.sizes
+  });
+})()
+""";
+
+    public static string PollApiScript(string storeId, string productId, string colorId, string[] sizes)
+    {
+        var sizesJson = JsonSerializer.Serialize(sizes);
+
+        return $$"""
+(async () => {
+  const storeId = {{JsonSerializer.Serialize(storeId)}};
+  const productId = {{JsonSerializer.Serialize(productId)}};
+  const colorId = {{JsonSerializer.Serialize(colorId ?? "")}};
+  const wanted = {{sizesJson}};
+
+  const url = '/itxrest/2/catalog/store/' + storeId + '/0/category/0/product/' + productId + '/detail?languageId=-5&appId=1';
+
+  let j;
+  try {
+    const r = await fetch(url, { headers: { accept: 'application/json' } });
+    if (!r.ok) return JSON.stringify({ ok: false, reason: 'api-http' });
+    j = await r.json();
+  } catch (e) {
+    return JSON.stringify({ ok: false, reason: 'api-exc' });
+  }
+
+  const colors = (j.detail && j.detail.colors) || [];
+  const c = colors.find(function (x) { return String(x.id) === String(colorId); }) || colors[0];
+  if (!c) return JSON.stringify({ ok: false, reason: 'sin-colores' });
+
+  const map = {};
+  for (const s of (c.sizes || [])) {
+    const name = (s.name || '').trim();
+    if (!name) continue;
+    if (!map[name]) map[name] = { size: name, visibility: 'SOLD_OUT', price: s.price ? Number(s.price) : null };
+    const cur = map[name];
+    if (s.visibilityValue === 'SHOW') cur.visibility = 'SHOW';
+    else if (s.visibilityValue === 'RUNNING_OUT' && cur.visibility !== 'SHOW') cur.visibility = 'RUNNING_OUT';
+    if (cur.price === null && s.price) cur.price = Number(s.price);
+  }
+
+  const out = [];
+  for (const sz of wanted) out.push(map[sz] || { size: sz, visibility: 'NO_EXISTE', price: null });
+
+  return JSON.stringify({
+    ok: true,
+    storeId: String(storeId),
+    productId: String(productId),
+    colorId: String(c.id),
+    product: j.name,
+    color: c.name,
+    sizes: out
+  });
+})()
+""";
+    }
+
     public static string SizeScript(string[] sizes)
     {
         var sizesJson = JsonSerializer.Serialize(sizes);

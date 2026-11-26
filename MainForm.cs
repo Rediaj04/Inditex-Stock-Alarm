@@ -969,8 +969,10 @@ public sealed class MainForm : Form
                     if (item.Page is not null && item.Page.IsOpen) continue;
                     item.Page = await _edge!.NewTabAsync(item.Config.Url, ct);
                     await item.Page.EnableFastModeAsync(ct);
-                    await item.Page.WaitForAsync(MonitorScripts.ReadyScript(), 30000, ct);
+                    await item.Page.WaitForAsync("document.readyState !== 'loading'", 15000, ct);
+                    await Task.Delay(1000, ct);
                     item.FreshlyLoaded = true;
+                    Log($"Pestaña lista: {item.DisplayName}", LogKind.Info);
                 }
 
                 var tasks = items.Select(item => CheckItemAsync(item, ct));
@@ -994,6 +996,17 @@ public sealed class MainForm : Form
 
             var elapsed = (DateTime.UtcNow - started).TotalSeconds;
             var wait = Math.Max(1, _intervalSec - elapsed);
+
+            if (_failStreak > 0)
+            {
+                var backoff = Math.Min(180, _intervalSec * Math.Pow(1.6, Math.Min(_failStreak, 5)));
+                if (backoff > wait)
+                {
+                    wait = backoff;
+                    if (_failStreak is 1 or 3 or 5)
+                        Log($"Backoff activo: siguiente intento en {Math.Round(wait)} s ({_failStreak} fallo(s) seguidos).", LogKind.Warn);
+                }
+            }
             try
             {
                 await Task.Delay(TimeSpan.FromSeconds(wait), ct);
@@ -1012,6 +1025,27 @@ public sealed class MainForm : Form
         {
             if (item.Page is null || !item.Page.IsOpen)
                 return (item, null, "pestaña no disponible");
+
+            // 1) Modo API: consulta directa sin recargar la ficha
+            if (item.ApiStoreId is not null && item.ApiProductId is not null)
+            {
+                try
+                {
+                    var pollScript = MonitorScripts.PollApiScript(
+                        item.ApiStoreId, item.ApiProductId, item.ApiColorId ?? "", item.Sizes);
+                    var pollValue = await item.Page.EvaluateAsync(pollScript, 20000, ct);
+                    var pollPayload = ParsePayload(pollValue?.GetString());
+                    if (pollPayload is { Ok: true }) return (item, pollPayload, null);
+                }
+                catch
+                {
+                    // se reintenta con resolución completa
+                }
+
+                item.ApiStoreId = null;
+                item.ApiProductId = null;
+                item.ApiColorId = null;
+            }
 
             if (!item.FreshlyLoaded)
             {
@@ -1047,23 +1081,73 @@ public sealed class MainForm : Form
 
             item.FreshlyLoaded = false;
 
-            var ready = await item.Page.WaitForAsync(MonitorScripts.ReadyScript(), 30000, ct);
+            // 2) Resolver la API de la ficha (funciona aunque la web no pinte las tallas)
+            string? apiReason = null;
+            try
+            {
+                var resolveValue = await item.Page.EvaluateAsync(
+                    MonitorScripts.ResolveApiScript(item.ColorId), 30000, ct);
+                var resolved = ParsePayload(resolveValue?.GetString());
+                if (resolved is { Ok: true })
+                {
+                    item.ApiStoreId = resolved.StoreId;
+                    item.ApiProductId = resolved.ProductId;
+                    item.ApiColorId = resolved.ColorId;
+
+                    if (item.Sizes.Length > 0)
+                    {
+                        var map = resolved.Sizes
+                            .GroupBy(s => s.Size, StringComparer.OrdinalIgnoreCase)
+                            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+                        resolved.Sizes = item.Sizes
+                            .Select(w => map.TryGetValue(w, out var found)
+                                ? found
+                                : new SizeResult { Size = w, Visibility = "NO_EXISTE" })
+                            .ToList();
+                    }
+
+                    return (item, resolved, null);
+                }
+
+                apiReason = resolved?.Reason ?? "sin-respuesta";
+            }
+            catch (Exception ex)
+            {
+                apiReason = ex.Message;
+            }
+
+            // 3) Fallback: leer tallas del DOM
+            var ready = await item.Page.WaitForAsync(MonitorScripts.ReadyScript(), 20000, ct);
             if (!ready)
-                return (item, null, "la página no cargó (posible bloqueo)");
+                return (item, null, $"la página no cargó (api: {apiReason})");
 
-            await Task.Delay(700, ct);
+            await Task.Delay(600, ct);
 
-            var value = await item.Page.EvaluateAsync(MonitorScripts.SizeScript(item.Sizes), 20000, ct);
+            var value = await item.Page.EvaluateAsync(MonitorScripts.SizeScript(item.Sizes), 25000, ct);
             var json = value?.GetString();
             if (string.IsNullOrEmpty(json))
                 return (item, null, "respuesta vacía");
 
-            var payload = JsonSerializer.Deserialize<CheckPayload>(json, JsonOpts);
+            var payload = ParsePayload(json);
             return payload is null ? (item, null, "respuesta no válida") : (item, payload, null);
         }
         catch (Exception ex)
         {
             return (item, null, ex.Message);
+        }
+    }
+
+    private static CheckPayload? ParsePayload(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<CheckPayload>(json, JsonOpts);
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -1081,7 +1165,7 @@ public sealed class MainForm : Form
                 item.LastError = error ?? payload?.Reason ?? "error";
                 item.StatusText = "error";
                 UpdateRow(item);
-                parts.Add($"{item.DisplayName}: error");
+                parts.Add($"{item.DisplayName}: error ({item.LastError})");
                 continue;
             }
 
@@ -1132,6 +1216,9 @@ public sealed class MainForm : Form
 
         foreach (var (item, transition) in alerts)
             await OnStockAsync(item, transition);
+
+        var okCount = results.Count(r => r.Payload is { Ok: true });
+        _failStreak = okCount > 0 ? 0 : _failStreak + 1;
 
         Log($"#{_checks:0000} · {string.Join(" · ", parts)}", LogKind.Check);
         UpdateFooter();

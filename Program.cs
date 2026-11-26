@@ -17,8 +17,17 @@ static class Program
                 return 1;
             }
 
-            var edge = new EdgeCdp(edgePath, Path.Combine(Path.GetTempPath(), "bsk-probe-profile"), 9555);
-            var result = SizeProbeService.ProbeAsync(edge, probeArg[8..]).GetAwaiter().GetResult();
+            var headful = args.Any(a => a.Equals("--headful", StringComparison.OrdinalIgnoreCase));
+            var noUa = args.Any(a => a.Equals("--noua", StringComparison.OrdinalIgnoreCase));
+            const string userAgent =
+                "--user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\"";
+            var extra = headful
+                ? "--window-position=-2400,-2400 --window-size=1400,1000" + (noUa ? "" : " " + userAgent)
+                : "--headless=new --window-size=1400,1000" + (noUa ? "" : " " + userAgent);
+            var port = headful ? 9556 : 9557;
+
+            var edge = new EdgeCdp(edgePath, Path.Combine(Path.GetTempPath(), "bsk-probe-" + port), port);
+            var result = SizeProbeService.ProbeAsync(edge, probeArg[8..], extra).GetAwaiter().GetResult();
             File.WriteAllText(
                 Path.Combine(AppContext.BaseDirectory, "probe.txt"),
                 System.Text.Json.JsonSerializer.Serialize(result,
