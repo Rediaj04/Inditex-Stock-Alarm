@@ -29,8 +29,9 @@ Lo único que pido (y que la licencia MIT ya exige) es **mantener el aviso de co
 | Oysho | ✅ probado (talla M) |
 | Stradivarius | ✅ probado (talla M) |
 | Pull&Bear | ✅ probado por API (su web bloquea el headless, pero la API responde) |
-| Massimo Dutti | ⚠️ sin ficha de prueba; misma plataforma |
-| Uterqüe / Zara Home | ⚠️ sin verificar |
+| Massimo Dutti | ✅ probado por API (tallas 35–42) |
+| Uterqüe | ➡️ redirige a Massimo Dutti (sin catálogo propio) |
+| Zara Home | ➖ no aplica: hogar, sin tallas |
 
 La app acepta cualquier URL de esos dominios. Si en una web no encuentra las tallas, lo muestra como **ERROR** en la fila del producto (no falla en silencio) y el log dice `sin-tallas`.
 
