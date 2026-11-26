@@ -66,6 +66,14 @@ public sealed class MainForm : Form
 
         BuildUi();
         _tray = BuildTray();
+        try
+        {
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? Icon;
+        }
+        catch
+        {
+            // sin icono propio si falla
+        }
 
         _alertReset.Tick += (_, _) =>
         {
@@ -571,7 +579,7 @@ public sealed class MainForm : Form
 
         var tray = new NotifyIcon
         {
-            Icon = SystemIcons.Information,
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Information,
             Text = "Inditex · Alarma de stock",
             Visible = true,
             ContextMenuStrip = menu
