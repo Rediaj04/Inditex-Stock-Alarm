@@ -30,12 +30,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: BershkaMonitor-win-x64
-          path: release/BershkaMonitor.exe
+          name: InditexStockAlarm-win-x64
+          path: release/InditexStockAlarm.exe
 
       - name: Crear Release (solo con tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: release/BershkaMonitor.exe
+          files: release/InditexStockAlarm.exe
           generate_release_notes: true

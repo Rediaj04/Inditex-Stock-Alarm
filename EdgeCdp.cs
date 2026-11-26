@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 public sealed class EdgeCdp
 {
@@ -126,10 +126,19 @@ public sealed class EdgeCdp
         return list;
     }
 
+    private static readonly string[] InditexHosts =
+    {
+        "bershka.com", "zara.com", "pullandbear.com", "stradivarius.com",
+        "oysho.com", "massimodutti.com", "uterque.com", "zarahome.com"
+    };
+
+    private static bool IsInditexUrl(string url) =>
+        InditexHosts.Any(h => url.Contains(h, StringComparison.OrdinalIgnoreCase));
+
     public async Task<CdpPage> GetMonitorPageAsync(string preferredUrl, CancellationToken ct)
     {
         var list = await GetTargetsAsync(ct);
-        var page = list.FirstOrDefault(x => x.Url.Contains("bershka.com", StringComparison.OrdinalIgnoreCase));
+        var page = list.FirstOrDefault(x => IsInditexUrl(x.Url));
         page ??= list.FirstOrDefault(x => !x.Url.StartsWith("devtools://", StringComparison.OrdinalIgnoreCase)
                                           && !x.Url.StartsWith("edge://", StringComparison.OrdinalIgnoreCase));
         page ??= list.FirstOrDefault();
@@ -138,7 +147,7 @@ public sealed class EdgeCdp
             return await NewTabAsync(preferredUrl, ct);
 
         var cdpPage = await CdpPage.ConnectAsync(page.WebSocketUrl, ct);
-        if (!page.Url.Contains("bershka.com", StringComparison.OrdinalIgnoreCase))
+        if (!IsInditexUrl(page.Url))
             await cdpPage.NavigateAsync(preferredUrl, ct);
         return cdpPage;
     }

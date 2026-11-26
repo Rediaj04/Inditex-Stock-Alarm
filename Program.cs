@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 static class Program
 {
@@ -15,7 +15,7 @@ static class Program
         if (args.Any(a => a.Equals("--soundtest", StringComparison.OrdinalIgnoreCase)))
         {
             var player = new AlarmPlayer();
-            player.Alarm("Prueba de alarma. Talla cuarenta y cuatro disponible en Bershka. Corre a comprar.");
+            player.Alarm("Prueba de alarma. Talla cuarenta y cuatro disponible en Inditex. Corre a comprar.");
             Thread.Sleep(6000);
             player.Silence();
             return 0;
@@ -85,10 +85,10 @@ static class Program
 
         ApplicationConfiguration.Initialize();
 
-        using var mutex = new Mutex(true, "BershkaMonitor_SingleInstance", out var isNew);
+        using var mutex = new Mutex(true, "InditexStockAlarm_SingleInstance", out var isNew);
         if (!isNew)
         {
-            NativeMethods.FocusWindow("Bershka · Monitor de stock");
+            NativeMethods.FocusWindow("Inditex · Alarma de stock");
             return 0;
         }
 

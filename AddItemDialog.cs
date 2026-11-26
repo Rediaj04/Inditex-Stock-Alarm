@@ -1,4 +1,4 @@
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 public sealed class AddItemDialog : Form
 {
@@ -22,7 +22,7 @@ public sealed class AddItemDialog : Form
 
         var title = new Label
         {
-            Text = "Pega la URL de la ficha de Bershka",
+            Text = "Pega la URL de la ficha (Inditex)",
             Font = new Font("Segoe UI Semibold", 13f),
             ForeColor = Color.White,
             AutoSize = true,
@@ -32,7 +32,8 @@ public sealed class AddItemDialog : Form
         var hint = new Label
         {
             Text = "Ejemplo: https://www.bershka.com/es/jeans-barrel-c0p229733871.html?colorId=428\n" +
-                   "El color se toma del parámetro colorId de la URL.",
+                   "Vale cualquier ficha de Bershka, Zara, Pull&Bear, Stradivarius, Oysho, Massimo Dutti…\n" +
+                   "El color se toma del colorId o de la propia URL.",
             Font = new Font("Segoe UI", 8.75f),
             ForeColor = Color.FromArgb(138, 147, 168),
             AutoSize = true,

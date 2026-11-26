@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 public sealed class AlarmPlayer
 {
@@ -11,7 +11,7 @@ public sealed class AlarmPlayer
 
     public AlarmPlayer()
     {
-        _wavPath = Path.Combine(Path.GetTempPath(), "bershka-monitor-siren.wav");
+        _wavPath = Path.Combine(Path.GetTempPath(), "inditex-stock-alarm-siren.wav");
         try
         {
             if (!File.Exists(_wavPath) || new FileInfo(_wavPath).Length < 1000)

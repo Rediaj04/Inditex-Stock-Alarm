@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -6,12 +6,12 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>BershkaMonitor</AssemblyName>
-    <RootNamespace>BershkaMonitor</RootNamespace>
+    <AssemblyName>InditexStockAlarm</AssemblyName>
+    <RootNamespace>InditexStockAlarm</RootNamespace>
     <Version>1.0.0</Version>
-    <Product>Bershka Monitor</Product>
-    <Company>Bershka Monitor contributors</Company>
-    <Description>Vigila tallas de cualquier ficha de Bershka y avisa con alarma, ventana emergente y pestaña en Brave.</Description>
+    <Product>Inditex Stock Alarm</Product>
+    <Company>Inditex Stock Alarm contributors</Company>
+    <Description>Vigila tallas de cualquier ficha de Inditex y avisa con alarma, ventana emergente y pestaña en Brave.</Description>
     <LangVersion>latest</LangVersion>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>

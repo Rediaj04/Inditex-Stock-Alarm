@@ -1,36 +1,101 @@
 using System.Text.Json;
 
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 internal static class MonitorScripts
 {
     public static string ReadyScript() =>
-        "!!document.querySelector('button.size-button')";
+        "!!document.querySelector('button.size-button, button.size-selector-sizes-size__button, [data-qa-action=\"size-in\"], .size-selector-sizes__size, [data-qa-action=\"add-to-cart\"]')";
 
     public static string SizeScript(string[] sizes)
     {
         var sizesJson = JsonSerializer.Serialize(sizes);
 
         return $$"""
-(() => {
+(async () => {
   const sizes = {{sizesJson}};
-  const btns = Array.from(document.querySelectorAll('button.size-button'));
-  const out = [];
-  for (const sz of sizes) {
-    const b = btns.find(function (x) { return (x.textContent || '').trim() === sz; });
-    if (!b) { out.push({ size: sz, visibility: 'NO_EXISTE', price: null }); continue; }
-    let v = 'SHOW';
-    if (b.disabled || b.classList.contains('size-button--disabled')) v = 'SOLD_OUT';
-    else if (b.classList.contains('size-button--low-stock')) v = 'RUNNING_OUT';
-    out.push({ size: sz, visibility: v, price: null });
+  const SIZE_SELECTOR = [
+    'button.size-button',
+    'button.size-selector-sizes-size__button',
+    '[data-qa-action="size-in"]',
+    '.size-selector-sizes__size'
+  ].join(',');
+
+  function visible(el) {
+    return !!(el && (el.getClientRects().length || el.offsetParent));
   }
+
+  function stateOf(el) {
+    let node = el;
+    let depth = 0;
+    while (node && node.nodeType === 1 && depth < 5) {
+      const cls = typeof node.className === 'string' ? node.className : '';
+      if (node.disabled === true) return 'SOLD_OUT';
+      if (node.getAttribute && node.getAttribute('aria-disabled') === 'true') return 'SOLD_OUT';
+      if (/disabled|unavailable|out-?of-?stock|sold-?out|agotad|no-?stock|sin-?stock/i.test(cls)) return 'SOLD_OUT';
+      if (/low-?stock|last-?units|last-?items|pocas|ultimas|últimas/i.test(cls)) return 'RUNNING_OUT';
+      node = node.parentElement;
+      depth++;
+    }
+    return 'SHOW';
+  }
+
+  function collect() {
+    const nodes = Array.from(document.querySelectorAll(SIZE_SELECTOR));
+    const generic = Array.from(document.querySelectorAll('button, [role="button"], [role="radio"], li'))
+      .filter(function (e) {
+        const t = (e.textContent || '').trim();
+        if (sizes.indexOf(t) < 0) return false;
+        let p = e;
+        let d = 0;
+        while (p && d < 6) {
+          const c = typeof p.className === 'string' ? p.className : '';
+          if (/size/i.test(c) || /size/i.test(p.id || '')) return true;
+          p = p.parentElement;
+          d++;
+        }
+        return false;
+      });
+    return nodes.concat(generic).filter(visible);
+  }
+
+  function read() {
+    const nodes = collect();
+    if (!nodes.length) return null;
+    const out = [];
+    for (const sz of sizes) {
+      const el = nodes.find(function (n) { return (n.textContent || '').trim() === sz; });
+      if (!el) {
+        out.push({ size: sz, visibility: 'NO_EXISTE', price: null });
+        continue;
+      }
+      const btn = el.tagName === 'BUTTON' ? el : (el.querySelector('button') || el);
+      out.push({ size: sz, visibility: stateOf(btn), price: null });
+    }
+    return out;
+  }
+
+  let res = read();
+
+  if (!res) {
+    const add = document.querySelector('[data-qa-action="add-to-cart"]') ||
+      Array.from(document.querySelectorAll('button')).find(function (b) {
+        return /^(añadir|agregar|add to (bag|cart|basket))$/i.test((b.textContent || '').trim());
+      });
+
+    if (add) {
+      try { add.click(); } catch (e) {}
+      await new Promise(function (r) { setTimeout(r, 1500); });
+      res = read();
+    }
+  }
+
   const h1 = document.querySelector('h1');
   let product = h1 ? h1.textContent.trim() : '';
-  if (!product) product = (document.title || '').split(' - ')[0].trim();
-  let color = '';
-  const sel = document.querySelector('.color-selector__item--selected, .color-selector__item[aria-checked="true"], .color-selector__item[aria-selected="true"]');
-  if (sel) color = (sel.getAttribute('title') || sel.getAttribute('aria-label') || (sel.textContent || '')).trim();
-  return JSON.stringify({ ok: true, product: product, color: color, sizes: out });
+  if (!product) product = (document.title || '').split(' | ')[0].trim();
+
+  if (!res) return JSON.stringify({ ok: false, reason: 'sin-tallas' });
+  return JSON.stringify({ ok: true, product: product, color: '', sizes: res });
 })()
 """;
     }

@@ -1,8 +1,8 @@
-# Bershka Monitor · alerta de stock
+# Inditex Stock Alarm
 
-Aplicación de escritorio para Windows que vigila la disponibilidad de las tallas que elijas en **cualquier ficha de Bershka** y te avisa con alarma sonora, ventana emergente y una pestaña abierta en Brave.
+Aplicación de escritorio para Windows que vigila la disponibilidad de las tallas que elijas en fichas de **webs de Inditex** (Bershka, Zara, Pull&Bear, Stradivarius, Oysho, Massimo Dutti…) y te avisa con alarma, ventana emergente y una pestaña abierta en Brave.
 
-> Proyecto personal, sin relación con Inditex/Bershka. Úsalo de forma responsable y respetando los términos de la web.
+> Proyecto personal, sin relación con Inditex. Úsalo de forma responsable y respetando los términos de cada web.
 
 > **Solo es una alarma.** No añade a la cesta, no rellena datos y no compra nada. Cuando detecta stock, avisa y abre la ficha; la compra la haces tú.
 
@@ -14,12 +14,26 @@ Lo único que pido (y que la licencia MIT ya exige) es **mantener el aviso de co
 
 ![Ventana principal](docs/app.png)
 
+## Webs soportadas
+
+| Web | Estado |
+| --- | --- |
+| Bershka | ✅ probado |
+| Zara | ✅ probado |
+| Pull&Bear | ⚠️ misma plataforma, probablemente funciona (sin verificar) |
+| Stradivarius | ⚠️ misma plataforma, probablemente funciona (sin verificar) |
+| Oysho | ⚠️ misma plataforma, probablemente funciona (sin verificar) |
+| Massimo Dutti | ⚠️ misma plataforma, probablemente funciona (sin verificar) |
+| Uterqüe / Zara Home | ⚠️ sin verificar |
+
+La app acepta cualquier URL de esos dominios. Si en una web no encuentra las tallas, lo muestra como **ERROR** en la fila del producto (no falla en silencio) y el log dice `sin-tallas`.
+
 ## Descargar y ejecutar (sin instalar nada)
 
-1. Ve a **Releases** y descarga `BershkaMonitor.exe` (build portable, ya lleva todo dentro).
+1. Ve a **Releases** y descarga `InditexStockAlarm.exe` (build portable, ya lleva todo dentro).
 2. Ponlo en una carpeta normal (Escritorio, Documentos, un USB…). No necesita instalador ni administrador.
 3. Doble clic. La primera vez te pide añadir un producto.
-4. Pega la URL de la ficha de Bershka, escribe la talla y dale a **INICIAR**.
+4. Pega la URL de la ficha, escribe la talla y dale a **INICIAR**.
 
 Requisitos: **Windows 10/11 de 64 bits** y **Microsoft Edge** (viene preinstalado en Windows). Brave es opcional: si no está, el aviso se abre en tu navegador por defecto.
 
@@ -27,11 +41,11 @@ Requisitos: **Windows 10/11 de 64 bits** y **Microsoft Edge** (viene preinstalad
 
 ## Dónde guarda los datos
 
-La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **junto al .exe** si la carpeta es escribible. Si no lo es (por ejemplo en `Program Files`), usa `%LOCALAPPDATA%\BershkaMonitor`.
+La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **junto al .exe** si la carpeta es escribible. Si no lo es (por ejemplo en `Program Files`), usa `%LOCALAPPDATA%\InditexStockAlarm`.
 
 ## Qué hace
 
-- Añades un producto pegando su URL de Bershka y escribiendo la talla (o varias: `42,44,46`).
+- Añades productos pegando su URL y escribiendo la talla (o varias: `42,44,46`, o letras: `S,M,L`).
 - Consulta el stock cada 15 s (mínimo recomendado) en un **Edge oculto en segundo plano**, así que no te abre ventanas de Edge.
 - **Candado de 15 s**: el intervalo no baja de 15 s. Si pulsas el candado `🔒 mín. 15 s`, sale un aviso en rojo explicando las consecuencias; si lo aceptas, se desbloquea hasta 5 s (bajo tu responsabilidad).
 - Cuando la talla pasa a disponible:
@@ -48,12 +62,12 @@ La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **
 ## Uso
 
 1. Pulsa **＋ Añadir producto**, pega la URL de la ficha y escribe la talla.
-   - El color se toma del parámetro `colorId` de la URL.
+   - El color se toma del parámetro `colorId` de la URL o de la propia URL (Zara usa `v1`).
    - Puedes poner varias tallas separadas por comas.
 2. Pulsa **INICIAR** (arranca solo al abrir).
 3. Deja la app abierta o minimizada en la bandeja.
 
-> La talla no se puede preseleccionar por URL en Bershka: la pestaña se abre en la ficha y color correctos, y tú tocas la talla y “Añadir a la cesta”.
+> La talla no se puede preseleccionar por URL: la pestaña se abre en la ficha y color correctos, y tú tocas la talla y “Añadir a la cesta”.
 
 ## Configuración
 
@@ -70,16 +84,31 @@ La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **
       "name": "Jeans barrel",
       "url": "https://www.bershka.com/es/jeans-barrel-c0p229733871.html?colorId=428",
       "sizes": "44"
+    },
+    {
+      "name": "Camiseta Zara",
+      "url": "https://www.zara.com/es/es/camiseta-tank-rib-basica-p04087450.html",
+      "sizes": "M"
     }
   ]
 }
 ```
 
 - `intervalSeconds`: 15–120 (o 5–120 si desbloqueas el candado).
-- `allowFastInterval`: si es `true`, permite bajar de 15 s sin pasar por el aviso (equivale a desbloquear el candado).
+- `allowFastInterval`: si es `true`, permite bajar de 15 s sin pasar por el aviso.
 - `soundEnabled`: sirena y voz.
 - `openInBrave`: abrir pestaña automáticamente al detectar stock.
 - `items`: lista de productos. También se puede editar a mano y reiniciar.
+
+## Cómo detecta el stock
+
+Carga la ficha en un Edge headless y lee las tallas de la página:
+
+- Bershka y similares: botones `button.size-button` (deshabilitado = agotada; `--low-stock` = pocas).
+- Zara: el selector aparece al pulsar “Añadir”; la app lo abre solo para leer las tallas (`button.size-selector-sizes-size__button`), nunca confirma la compra.
+- Además hay un buscador genérico: botones/elementos clicables cuyo texto coincide con la talla y que están dentro de un contenedor con “size” en su clase o id.
+
+Se recarga la ficha en cada comprobación (con imágenes y fuentes bloqueadas para que sea ligero).
 
 ## Compilar
 
@@ -89,7 +118,7 @@ Con el SDK de .NET 10:
 build-release.cmd
 ```
 
-Genera `release\BershkaMonitor.exe` (un solo archivo autocontenido). Para una build rápida que use el runtime instalado:
+Genera `release\InditexStockAlarm.exe` (un solo archivo autocontenido). Para una build rápida que use el runtime instalado:
 
 ```bat
 dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
@@ -97,19 +126,9 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 
 El repositorio incluye un workflow de GitHub Actions (`.github/workflows/build.yml`) que compila la versión portable en cada push y crea un Release al subir un tag `v*`.
 
-## Cómo detecta el stock
-
-Carga la ficha en un Edge headless y lee los botones de talla de la página:
-
-- botón deshabilitado → agotada
-- clase `size-button--low-stock` → quedan pocas unidades
-- botón activo → disponible
-
-Funciona con cualquier producto de Bershka sin depender de IDs internos. Se recarga la ficha en cada comprobación (con imágenes y fuentes bloqueadas para que sea ligero).
-
 ## Límites conocidos
 
-- Solo Bershka (el parseo de URL y los selectores son suyos). Si cambian el diseño de la ficha, habrá que ajustar los selectores.
+- Solo webs de Inditex; el parseo de URL y los selectores son suyos. Si cambian el diseño de la ficha, habrá que ajustar los selectores.
 - Con 15 s de intervalo, un reestock muy corto puede escaparse.
 - Si cierras la app o el PC se apaga/suspende, deja de vigilar.
 - La web puede bloquear peticiones si se abusa de la frecuencia; el log muestra los fallos.

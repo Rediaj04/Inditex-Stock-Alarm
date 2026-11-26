@@ -1,4 +1,4 @@
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 public sealed record AlertItem(string Name, string Detail, string Price, string Url);
 
@@ -12,7 +12,7 @@ public sealed class AlertForm : Form
 
     public AlertForm()
     {
-        Text = "¡STOCK! · Bershka talla 44";
+        Text = "¡STOCK! · Alerta de talla";
         ClientSize = new Size(900, 500);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedSingle;

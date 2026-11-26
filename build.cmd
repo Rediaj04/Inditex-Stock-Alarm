@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-echo Compilando Bershka Monitor...
+echo Compilando Inditex Stock Alarm...
 dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
 if errorlevel 1 (
   echo.
@@ -10,5 +10,5 @@ if errorlevel 1 (
   exit /b 1
 )
 echo.
-echo Listo. Ejecutable en: publish\BershkaMonitor.exe
+echo Listo. Ejecutable en: publish\InditexStockAlarm.exe
 pause

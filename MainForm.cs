@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 public sealed class MainForm : Form
 {
@@ -93,7 +93,7 @@ public sealed class MainForm : Form
         if (WindowState == FormWindowState.Minimized)
         {
             Hide();
-            _tray.ShowBalloonTip(2500, "Bershka Monitor", "Sigue vigilando en segundo plano.", ToolTipIcon.Info);
+            _tray.ShowBalloonTip(2500, "Inditex Stock Alarm", "Sigue vigilando en segundo plano.", ToolTipIcon.Info);
         }
     }
 
@@ -105,7 +105,7 @@ public sealed class MainForm : Form
 
         if (_items.Count == 0)
         {
-            Log("Primera vez: añade tu primer producto (URL de Bershka + talla).", LogKind.Info);
+            Log("Primera vez: añade tu primer producto (URL + talla).", LogKind.Info);
             AddItem();
         }
 
@@ -136,7 +136,7 @@ public sealed class MainForm : Form
     private void BuildUi()
     {
         SuspendLayout();
-        Text = "Bershka · Monitor de stock";
+        Text = "Inditex · Alarma de stock";
         ClientSize = new Size(1100, 790);
         MinimumSize = new Size(960, 680);
         BackColor = Palette.Bg;
@@ -182,7 +182,7 @@ public sealed class MainForm : Form
         var left = new Panel { Dock = DockStyle.Fill, BackColor = Palette.Bg };
         left.Controls.Add(new Label
         {
-            Text = "Bershka · Monitor de stock",
+            Text = "Inditex · Alarma de stock",
             Font = new Font("Segoe UI Semibold", 15f),
             ForeColor = Palette.Text,
             AutoSize = true,
@@ -190,7 +190,7 @@ public sealed class MainForm : Form
         });
         left.Controls.Add(new Label
         {
-            Text = "Pega cualquier ficha de Bershka, elige talla y listo: alarma + pestaña en Brave",
+            Text = "Pega cualquier ficha de Inditex, elige talla y listo: alarma + pestaña en Brave",
             Font = new Font("Segoe UI", 9f),
             ForeColor = Palette.Muted,
             AutoSize = true,
@@ -483,7 +483,7 @@ public sealed class MainForm : Form
         var tray = new NotifyIcon
         {
             Icon = SystemIcons.Information,
-            Text = "Bershka · Monitor de stock",
+            Text = "Inditex · Alarma de stock",
             Visible = true,
             ContextMenuStrip = menu
         };

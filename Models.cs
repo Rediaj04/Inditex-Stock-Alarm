@@ -1,4 +1,4 @@
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 public sealed class SizeResult
 {

@@ -1,4 +1,4 @@
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 internal static class AppPaths
 {
@@ -15,7 +15,7 @@ internal static class AppPaths
 
         var local = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "BershkaMonitor");
+            "InditexStockAlarm");
 
         try
         {
@@ -24,7 +24,7 @@ internal static class AppPaths
         catch
         {
             // último recurso: carpeta temporal del usuario
-            local = Path.Combine(Path.GetTempPath(), "BershkaMonitor");
+            local = Path.Combine(Path.GetTempPath(), "InditexStockAlarm");
             Directory.CreateDirectory(local);
         }
 

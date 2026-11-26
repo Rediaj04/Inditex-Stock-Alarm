@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 internal static class SelfTest
 {
@@ -16,7 +16,11 @@ internal static class SelfTest
             var profile = Path.Combine(Path.GetTempPath(), "bsk-selftest-profile");
             cdp = new EdgeCdp(edge, profile, 9444);
 
-            const string url = "https://www.bershka.com/es/jeans-barrel-c0p229733871.html?colorId=428";
+            var url = args.FirstOrDefault(a => a.StartsWith("--url=", StringComparison.OrdinalIgnoreCase))?[6..]
+                      ?? "https://www.bershka.com/es/jeans-barrel-c0p229733871.html?colorId=428";
+            var size = args.FirstOrDefault(a => a.StartsWith("--size=", StringComparison.OrdinalIgnoreCase))?[7..]
+                       ?? "44";
+
             var extra = headless
                 ? "--headless=new --mute-audio --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\""
                 : "--window-position=-2400,-2400 --window-size=1000,800";
@@ -27,16 +31,16 @@ internal static class SelfTest
             var page = await cdp.GetMonitorPageAsync(url, CancellationToken.None);
             sb.AppendLine("page=ok");
 
-            var ready = await page.WaitForAsync(MonitorScripts.ReadyScript(), 40000, CancellationToken.None);
+            var ready = await page.WaitForAsync(MonitorScripts.ReadyScript(), 45000, CancellationToken.None);
             sb.AppendLine("ready=" + ready);
 
-            await Task.Delay(5000);
+            await Task.Delay(4000);
 
             for (var i = 1; i <= 2; i++)
             {
                 var value = await page.EvaluateAsync(
-                    MonitorScripts.SizeScript(new[] { "44" }), 40000, CancellationToken.None);
-                sb.AppendLine($"fetch{i}=" + (value?.GetString() ?? "<null>"));
+                    MonitorScripts.SizeScript(new[] { size }), 40000, CancellationToken.None);
+                sb.AppendLine($"check{i}=" + (value?.GetString() ?? "<null>"));
                 await Task.Delay(3000);
             }
         }

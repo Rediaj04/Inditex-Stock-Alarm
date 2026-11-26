@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 public sealed class AppConfig
 {
@@ -57,7 +57,20 @@ public sealed class ItemConfig
 
 public static class ItemUrl
 {
-    private static readonly Regex ProductRx = new(@"-c0p(\d+)\.html", RegexOptions.IgnoreCase);
+    private static readonly string[] InditexDomains =
+    {
+        "bershka.com",
+        "zara.com",
+        "pullandbear.com",
+        "stradivarius.com",
+        "oysho.com",
+        "massimodutti.com",
+        "uterque.com",
+        "uterqe.com",
+        "zarahome.com"
+    };
+
+    private static readonly Regex SlugSuffix = new(@"-(?:c0p|p)\d+\.html$", RegexOptions.IgnoreCase);
 
     public static bool TryParse(string? url, out string colorId, out string error)
     {
@@ -77,15 +90,20 @@ public static class ItemUrl
             return false;
         }
 
-        if (!uri.Host.Contains("bershka.com", StringComparison.OrdinalIgnoreCase))
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
         {
-            error = "De momento solo funciona con URLs de bershka.com.";
+            error = "La URL debe empezar por https://";
             return false;
         }
 
-        if (!ProductRx.IsMatch(uri.AbsolutePath))
+        var host = uri.Host.ToLowerInvariant();
+        var known = InditexDomains.Any(d =>
+            host.Equals(d, StringComparison.Ordinal) ||
+            host.EndsWith("." + d, StringComparison.Ordinal));
+
+        if (!known)
         {
-            error = "No encuentro el producto en esa URL. Copia la URL completa de la ficha.";
+            error = "De momento solo se admiten webs de Inditex: Bershka, Zara, Pull&Bear, Stradivarius, Oysho, Massimo Dutti, Uterqüe y Zara Home.";
             return false;
         }
 
@@ -103,8 +121,8 @@ public static class ItemUrl
         (text ?? "")
             .Split(new[] { ',', ';', ' ', '/' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => s.Trim())
-            .Where(s => s.Length is > 0 and <= 4)
-            .Distinct()
+            .Where(s => s.Length is > 0 and <= 6)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
     public static string GuessName(string url)
@@ -113,8 +131,7 @@ public static class ItemUrl
         {
             var uri = new Uri(url);
             var slug = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "Producto";
-            var dash = slug.IndexOf("-c0p", StringComparison.OrdinalIgnoreCase);
-            if (dash > 0) slug = slug[..dash];
+            slug = SlugSuffix.Replace(slug, "");
             var words = slug.Replace('-', ' ').Trim();
             return words.Length == 0 ? "Producto" : char.ToUpperInvariant(words[0]) + words[1..];
         }

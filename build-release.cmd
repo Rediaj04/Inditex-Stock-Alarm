@@ -18,6 +18,6 @@ if errorlevel 1 (
 )
 
 echo.
-echo Listo. Un solo ejecutable en: release\BershkaMonitor.exe
+echo Listo. Un solo ejecutable en: release\InditexStockAlarm.exe
 echo Puedes copiarlo a cualquier carpeta (Escritorio, Documentos, USB...).
 pause

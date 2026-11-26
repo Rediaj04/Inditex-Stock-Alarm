@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 internal static class NativeMethods
 {

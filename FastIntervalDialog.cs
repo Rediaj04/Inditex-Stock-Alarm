@@ -1,4 +1,4 @@
-namespace BershkaMonitor;
+namespace InditexStockAlarm;
 
 public sealed class FastIntervalDialog : Form
 {
@@ -28,7 +28,7 @@ public sealed class FastIntervalDialog : Form
             Text =
                 "El mínimo de 15 s está puesto para no abusar de la web.\n\n" +
                 "Si lo desbloqueas y bajas el intervalo:\n\n" +
-                "   •  se multiplican las peticiones a Bershka\n" +
+                "   •  se multiplican las peticiones a la web\n" +
                 "   •  pueden limitar o bloquear temporalmente tu conexión\n" +
                 "   •  el monitor puede empezar a fallar y perder el reestock\n" +
                 "   •  no hay ninguna garantía de que funcione mejor\n\n" +
