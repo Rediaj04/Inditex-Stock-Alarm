@@ -22,8 +22,8 @@ internal static class SelfTest
                        ?? "44";
 
             var extra = headless
-                ? "--headless=new --mute-audio --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\""
-                : "--window-position=-2400,-2400 --window-size=1000,800";
+                ? "--headless=new --mute-audio --window-size=1400,1000 --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\""
+                : "--window-position=-2400,-2400 --window-size=1200,900";
 
             await cdp.StartAsync(url, CancellationToken.None, extra);
             sb.AppendLine("edge=ok");
@@ -40,6 +40,11 @@ internal static class SelfTest
                 "JSON.stringify({url: location.href, title: document.title, text: (document.body ? document.body.innerText : '').slice(0, 400)})",
                 15000, CancellationToken.None);
             sb.AppendLine("pageinfo=" + (info?.GetString() ?? "<null>"));
+
+            var dump = await page.EvaluateAsync(
+                "JSON.stringify(Array.from(document.querySelectorAll('button,a,[role=button]')).filter(function(e){return e.getClientRects().length;}).map(function(e){return (e.textContent||'').trim().replace(/\\s+/g,' ').slice(0,40);}).filter(function(t){return t;}).slice(0,30))",
+                15000, CancellationToken.None);
+            sb.AppendLine("buttons=" + (dump?.GetString() ?? "<null>"));
 
             for (var i = 1; i <= 2; i++)
             {

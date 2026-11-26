@@ -9,7 +9,7 @@ public sealed class MainForm : Form
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
     private const string HeadlessArgs =
-        "--headless=new --mute-audio --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\"";
+        "--headless=new --mute-audio --window-size=1400,1000 --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\"";
 
     private readonly AppConfig _config;
     private readonly List<MonitorItem> _items = new();

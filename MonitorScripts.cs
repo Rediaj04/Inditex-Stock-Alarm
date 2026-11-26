@@ -87,14 +87,14 @@ internal static class MonitorScripts
   }
 
   // Aceptar cookies si hay banner
-  const accept = Array.from(document.querySelectorAll('button')).find(function (b) {
+  const accept = Array.from(document.querySelectorAll('button, a, [role="button"]')).find(function (b) {
     if (!visible(b)) return false;
     const t = (b.textContent || '').trim();
-    return /^(aceptar( todas)?( las)? cookies|aceptar todas|aceptar y continuar|accept all( cookies)?|aceptar)$/i.test(t);
+    return /^(aceptar( todas)?( las)? cookies|aceptar todas|aceptar y continuar|aceptar|acepto|accept all( cookies)?|accept cookies|accept)$/i.test(t);
   });
   if (accept) {
     try { accept.click(); } catch (e) {}
-    await new Promise(function (r) { setTimeout(r, 700); });
+    await new Promise(function (r) { setTimeout(r, 2500); });
   }
 
   let res = read();
@@ -113,8 +113,24 @@ internal static class MonitorScripts
   }
 
   if (!res) {
-    await new Promise(function (r) { setTimeout(r, 1200); });
+    try { window.scrollTo(0, 900); } catch (e) {}
+    await new Promise(function (r) { setTimeout(r, 900); });
     res = read();
+  }
+
+  if (!res) {
+    const selects = Array.from(document.querySelectorAll('select')).filter(visible);
+    for (const sel of selects) {
+      const opts = Array.from(sel.options || []);
+      let any = false;
+      const tmp = [];
+      for (const sz of sizes) {
+        const opt = opts.find(function (o) { return (o.textContent || '').trim() === sz; });
+        if (opt) any = true;
+        tmp.push({ size: sz, visibility: opt ? (opt.disabled ? 'SOLD_OUT' : 'SHOW') : 'NO_EXISTE', price: null });
+      }
+      if (any) { res = tmp; break; }
+    }
   }
 
   const h1 = document.querySelector('h1');
