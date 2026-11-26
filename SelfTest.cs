@@ -36,6 +36,11 @@ internal static class SelfTest
 
             await Task.Delay(4000);
 
+            var info = await page.EvaluateAsync(
+                "JSON.stringify({url: location.href, title: document.title, text: (document.body ? document.body.innerText : '').slice(0, 400)})",
+                15000, CancellationToken.None);
+            sb.AppendLine("pageinfo=" + (info?.GetString() ?? "<null>"));
+
             for (var i = 1; i <= 2; i++)
             {
                 var value = await page.EvaluateAsync(

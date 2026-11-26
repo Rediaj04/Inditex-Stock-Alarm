@@ -5,7 +5,7 @@ namespace InditexStockAlarm;
 internal static class MonitorScripts
 {
     public static string ReadyScript() =>
-        "!!document.querySelector('button.size-button, button.size-selector-sizes-size__button, [data-qa-action=\"size-in\"], .size-selector-sizes__size, [data-qa-action=\"add-to-cart\"]')";
+        "!!document.querySelector('button.size-button, button.size-selector-sizes-size__button, button.size-item, [data-qa-action=\"size-in\"], .size-selector-sizes__size, [data-qa-action=\"add-to-cart\"]')";
 
     public static string SizeScript(string[] sizes)
     {
@@ -17,12 +17,23 @@ internal static class MonitorScripts
   const SIZE_SELECTOR = [
     'button.size-button',
     'button.size-selector-sizes-size__button',
+    'button.size-item',
     '[data-qa-action="size-in"]',
     '.size-selector-sizes__size'
   ].join(',');
 
   function visible(el) {
     return !!(el && (el.getClientRects().length || el.offsetParent));
+  }
+
+  function matchesSize(text, size) {
+    const t = (text || '').trim();
+    if (t === size) return true;
+    if (t.indexOf(size) === 0) {
+      const rest = t.slice(size.length).trim();
+      return /^(ver similares|similares|notify|av[ií]same|avisame)/i.test(rest);
+    }
+    return false;
   }
 
   function stateOf(el) {
@@ -32,7 +43,7 @@ internal static class MonitorScripts
       const cls = typeof node.className === 'string' ? node.className : '';
       if (node.disabled === true) return 'SOLD_OUT';
       if (node.getAttribute && node.getAttribute('aria-disabled') === 'true') return 'SOLD_OUT';
-      if (/disabled|unavailable|out-?of-?stock|sold-?out|agotad|no-?stock|sin-?stock/i.test(cls)) return 'SOLD_OUT';
+      if (/disabled|unavailable|out-?of-?stock|sold-?out|agotad|no-?stock|sin-?stock|size-no-stock/i.test(cls)) return 'SOLD_OUT';
       if (/low-?stock|last-?units|last-?items|pocas|ultimas|últimas/i.test(cls)) return 'RUNNING_OUT';
       node = node.parentElement;
       depth++;
@@ -45,7 +56,7 @@ internal static class MonitorScripts
     const generic = Array.from(document.querySelectorAll('button, [role="button"], [role="radio"], li'))
       .filter(function (e) {
         const t = (e.textContent || '').trim();
-        if (sizes.indexOf(t) < 0) return false;
+        if (!sizes.some(function (s) { return matchesSize(t, s); })) return false;
         let p = e;
         let d = 0;
         while (p && d < 6) {
@@ -64,7 +75,7 @@ internal static class MonitorScripts
     if (!nodes.length) return null;
     const out = [];
     for (const sz of sizes) {
-      const el = nodes.find(function (n) { return (n.textContent || '').trim() === sz; });
+      const el = nodes.find(function (n) { return matchesSize(n.textContent, sz); });
       if (!el) {
         out.push({ size: sz, visibility: 'NO_EXISTE', price: null });
         continue;
@@ -75,19 +86,35 @@ internal static class MonitorScripts
     return out;
   }
 
+  // Aceptar cookies si hay banner
+  const accept = Array.from(document.querySelectorAll('button')).find(function (b) {
+    if (!visible(b)) return false;
+    const t = (b.textContent || '').trim();
+    return /^(aceptar( todas)?( las)? cookies|aceptar todas|aceptar y continuar|accept all( cookies)?|aceptar)$/i.test(t);
+  });
+  if (accept) {
+    try { accept.click(); } catch (e) {}
+    await new Promise(function (r) { setTimeout(r, 700); });
+  }
+
   let res = read();
 
   if (!res) {
     const add = document.querySelector('[data-qa-action="add-to-cart"]') ||
       Array.from(document.querySelectorAll('button')).find(function (b) {
-        return /^(añadir|agregar|add to (bag|cart|basket))$/i.test((b.textContent || '').trim());
+        return /^(añadir|agregar|comprar|add to (bag|cart|basket))$/i.test((b.textContent || '').trim());
       });
 
     if (add) {
       try { add.click(); } catch (e) {}
-      await new Promise(function (r) { setTimeout(r, 1500); });
+      await new Promise(function (r) { setTimeout(r, 1600); });
       res = read();
     }
+  }
+
+  if (!res) {
+    await new Promise(function (r) { setTimeout(r, 1200); });
+    res = read();
   }
 
   const h1 = document.querySelector('h1');
