@@ -2,7 +2,15 @@
 
 Aplicación de escritorio para Windows que vigila la disponibilidad de las tallas que elijas en **cualquier ficha de Bershka** y te avisa con alarma sonora, ventana emergente y una pestaña abierta en Brave.
 
-> Proyecto personal, sin relación con Inditex/Bershka. Úsalo de forma responsable y respetando los términos de la web. No compra nada por ti.
+> Proyecto personal, sin relación con Inditex/Bershka. Úsalo de forma responsable y respetando los términos de la web.
+
+> **Solo es una alarma.** No añade a la cesta, no rellena datos y no compra nada. Cuando detecta stock, avisa y abre la ficha; la compra la haces tú.
+
+## 100 % abierto: cópialo, cámbialo, mejóralo
+
+El código es libre (MIT): puedes copiarlo, modificarlo, forkerlo y redistribuirlo, incluso sin pedir permiso. No me molesta que se reutilice.
+
+Lo único que pido (y que la licencia MIT ya exige) es **mantener el aviso de copyright** y, si te apetece, enlazar el repo original y darme las gracias. Con eso me vale.
 
 ![Ventana principal](docs/app.png)
 
@@ -24,7 +32,8 @@ La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **
 ## Qué hace
 
 - Añades un producto pegando su URL de Bershka y escribiendo la talla (o varias: `42,44,46`).
-- Consulta el stock cada 15 s (mínimo configurable hasta 120 s) en un **Edge oculto en segundo plano**, así que no te abre ventanas de Edge.
+- Consulta el stock cada 15 s (mínimo recomendado) en un **Edge oculto en segundo plano**, así que no te abre ventanas de Edge.
+- **Candado de 15 s**: el intervalo no baja de 15 s. Si pulsas el candado `🔒 mín. 15 s`, sale un aviso en rojo explicando las consecuencias; si lo aceptas, se desbloquea hasta 5 s (bajo tu responsabilidad).
 - Cuando la talla pasa a disponible:
   - **Ventana emergente grande y siempre encima** con un botón `OK · ¡VOY A COMPRAR!`.
   - **Sirena + voz** que no para hasta que pulsas OK (o silencias). Se puede desactivar con `Sonido: ON/OFF`.
@@ -53,6 +62,7 @@ La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **
 ```json
 {
   "intervalSeconds": 15,
+  "allowFastInterval": false,
   "soundEnabled": true,
   "openInBrave": true,
   "items": [
@@ -65,7 +75,8 @@ La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **
 }
 ```
 
-- `intervalSeconds`: 15–120.
+- `intervalSeconds`: 15–120 (o 5–120 si desbloqueas el candado).
+- `allowFastInterval`: si es `true`, permite bajar de 15 s sin pasar por el aviso (equivale a desbloquear el candado).
 - `soundEnabled`: sirena y voz.
 - `openInBrave`: abrir pestaña automáticamente al detectar stock.
 - `items`: lista de productos. También se puede editar a mano y reiniciar.
@@ -103,6 +114,10 @@ Funciona con cualquier producto de Bershka sin depender de IDs internos. Se reca
 - Si cierras la app o el PC se apaga/suspende, deja de vigilar.
 - La web puede bloquear peticiones si se abusa de la frecuencia; el log muestra los fallos.
 - No automatiza la compra.
+
+## Atribución
+
+Si copias o redistribuyes este proyecto (o una versión modificada), mantén el archivo `LICENSE` con el aviso de copyright. Además, si quieres, añade un enlace al repo original y un “gracias”; no es obligatorio, pero se agradece.
 
 ## Licencia
 

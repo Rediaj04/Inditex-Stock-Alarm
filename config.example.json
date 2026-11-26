@@ -1,5 +1,6 @@
 {
   "intervalSeconds": 15,
+  "allowFastInterval": false,
   "soundEnabled": true,
   "openInBrave": true,
   "items": [

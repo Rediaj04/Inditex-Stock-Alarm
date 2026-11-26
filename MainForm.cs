@@ -31,12 +31,14 @@ public sealed class MainForm : Form
     private bool _alertTestMode;
     private long _muteUntilTicks;
     private bool _soundEnabled;
+    private bool _allowFast;
 
     private Label _pill = null!;
     private Label _foot = null!;
     private Button _btnToggle = null!;
     private Button _btnSilence = null!;
     private Button _btnSound = null!;
+    private Button _btnLock = null!;
     private NumericUpDown _num = null!;
     private RichTextBox _log = null!;
     private FlowLayoutPanel _itemsPanel = null!;
@@ -45,7 +47,8 @@ public sealed class MainForm : Form
     public MainForm()
     {
         _config = AppConfig.Load(AppPaths.DataDir);
-        _intervalSec = Math.Clamp(_config.IntervalSeconds, 15, 120);
+        _allowFast = _config.AllowFastInterval;
+        _intervalSec = Math.Clamp(_config.IntervalSeconds, _allowFast ? 5 : 15, 120);
         _soundEnabled = _config.SoundEnabled;
         _alarm.Enabled = _soundEnabled;
 
@@ -228,9 +231,9 @@ public sealed class MainForm : Form
 
         _num = new NumericUpDown
         {
-            Minimum = 15,
+            Minimum = _allowFast ? 5 : 15,
             Maximum = 120,
-            Value = Math.Clamp(_intervalSec, 15, 120),
+            Value = Math.Clamp(_intervalSec, _allowFast ? 5 : 15, 120),
             Width = 96,
             Height = 30,
             Margin = new Padding(12, 8, 4, 0),
@@ -254,6 +257,11 @@ public sealed class MainForm : Form
             ForeColor = Palette.Muted,
             Margin = new Padding(0, 16, 0, 0)
         };
+
+        _btnLock = MakeButton(_allowFast ? "🔓 mín. 5 s" : "🔒 mín. 15 s", Palette.Chip, Palette.Text, 128);
+        _btnLock.Margin = new Padding(8, 0, 10, 0);
+        _btnLock.ForeColor = _allowFast ? Palette.Amber : Palette.Muted;
+        _btnLock.Click += (_, _) => ToggleFast();
 
         _btnSound = MakeButton("", Palette.Chip, Palette.Text, 150);
         _btnSound.Margin = new Padding(14, 0, 10, 0);
@@ -291,7 +299,7 @@ public sealed class MainForm : Form
             Margin = new Padding(10, 16, 0, 0)
         };
 
-        bar.Controls.AddRange(new Control[] { _btnToggle, _num, lblSeg, _btnSound, btnTest, btnBrave, _btnSilence, hint });
+        bar.Controls.AddRange(new Control[] { _btnToggle, _num, lblSeg, _btnLock, _btnSound, btnTest, btnBrave, _btnSilence, hint });
         return bar;
     }
 
@@ -301,6 +309,36 @@ public sealed class MainForm : Form
         _btnSound.Text = _soundEnabled ? "Sonido: ON" : "Sonido: OFF";
         _btnSound.BackColor = _soundEnabled ? Palette.GreenBg : Palette.Chip;
         _btnSound.ForeColor = _soundEnabled ? Palette.Green : Palette.Muted;
+    }
+
+    private void ToggleFast()
+    {
+        if (!_allowFast)
+        {
+            using var dialog = new FastIntervalDialog();
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+            _allowFast = true;
+            _num.Minimum = 5;
+            _config.AllowFastInterval = true;
+            _btnLock.Text = "🔓 mín. 5 s";
+            _btnLock.ForeColor = Palette.Amber;
+            Log("¡Mínimo desbloqueado! Ya puedes bajar de 15 s. Bajo tu responsabilidad.", LogKind.Warn);
+        }
+        else
+        {
+            _allowFast = false;
+            _num.Minimum = 15;
+            if (_num.Value < 15) _num.Value = 15;
+            _config.AllowFastInterval = false;
+            _btnLock.Text = "🔒 mín. 15 s";
+            _btnLock.ForeColor = Palette.Muted;
+            Log("Mínimo bloqueado de nuevo en 15 s.", LogKind.Info);
+        }
+
+        _config.IntervalSeconds = _intervalSec;
+        _config.Save(AppPaths.DataDir);
+        UpdateFooter();
     }
 
     private Control BuildItems()
@@ -1135,7 +1173,7 @@ public sealed class MainForm : Form
     private void UpdateFooter()
     {
         var last = _lastCheckUtc == DateTime.MinValue ? "—" : _lastCheckUtc.ToLocalTime().ToString("HH:mm:ss");
-        var text = $"PC sin suspensión · última comprobación {last} · cada {_intervalSec} s · " +
+        var text = $"PC sin suspensión · última comprobación {last} · cada {_intervalSec} s (mín. {(_allowFast ? 5 : 15)} s) · " +
                    $"{_items.Count} producto(s) · comprobaciones {_checks} · fallos {_failStreak} · " +
                    $"sonido {(_soundEnabled ? "on" : "off")} · Brave {(FindBrave() is null ? "no" : "ok")} · Edge {(_edge is null ? "—" : "ok")}";
 

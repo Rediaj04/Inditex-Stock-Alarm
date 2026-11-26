@@ -6,6 +6,7 @@ namespace BershkaMonitor;
 public sealed class AppConfig
 {
     public int IntervalSeconds { get; set; } = 15;
+    public bool AllowFastInterval { get; set; }
     public bool SoundEnabled { get; set; } = true;
     public bool OpenInBrave { get; set; } = true;
     public List<ItemConfig> Items { get; set; } = new();
