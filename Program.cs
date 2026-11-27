@@ -77,6 +77,33 @@ static class Program
             return 0;
         }
 
+        if (args.Any(a => a.Equals("--settingspreview", StringComparison.OrdinalIgnoreCase)))
+        {
+            ApplicationConfiguration.Initialize();
+
+            var dialog = new SettingsDialog(AppConfig.Load(AppPaths.DataDir));
+            var timer = new System.Windows.Forms.Timer { Interval = 3000 };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                try
+                {
+                    using var bmp = new Bitmap(dialog.Width, dialog.Height);
+                    dialog.DrawToBitmap(bmp, new Rectangle(0, 0, dialog.Width, dialog.Height));
+                    bmp.Save(Path.Combine(AppContext.BaseDirectory, "settings-preview.png"));
+                }
+                catch
+                {
+                    // ignored
+                }
+                dialog.Close();
+            };
+            dialog.Shown += (_, _) => timer.Start();
+
+            Application.Run(dialog);
+            return 0;
+        }
+
         if (args.Any(a => a.Equals("--alerttest", StringComparison.OrdinalIgnoreCase)))
         {
             ApplicationConfiguration.Initialize();

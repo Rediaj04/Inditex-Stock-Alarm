@@ -9,6 +9,9 @@ public sealed class AlertForm : Form
 
     public event EventHandler? Confirmed;
     public event EventHandler? SilenceRequested;
+    public event EventHandler? Bought;
+
+    public IReadOnlyList<string> Urls => _urls;
 
     public AlertForm()
     {
@@ -83,6 +86,22 @@ public sealed class AlertForm : Form
         };
         silence.LinkClicked += (_, _) => SilenceRequested?.Invoke(this, EventArgs.Empty);
         Controls.Add(silence);
+
+        var bought = new LinkLabel
+        {
+            Text = "ya he comprado · pausar este producto",
+            Font = new Font("Segoe UI", 9f),
+            LinkColor = Color.FromArgb(160, 235, 190),
+            ActiveLinkColor = Color.White,
+            AutoSize = true,
+            Location = new Point(430, 458)
+        };
+        bought.LinkClicked += (_, _) =>
+        {
+            Bought?.Invoke(this, EventArgs.Empty);
+            Close();
+        };
+        Controls.Add(bought);
     }
 
     public void AddItem(AlertItem item)

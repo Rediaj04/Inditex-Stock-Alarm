@@ -43,7 +43,8 @@ public sealed class MonitorItem
 
     public ItemConfig Config { get; }
     public string ColorId { get; }
-    public string[] Sizes { get; }
+    public string[] Sizes { get; set; }
+    public bool Paused { get; set; }
 
     public CdpPage? Page { get; set; }
     public bool FreshlyLoaded { get; set; }

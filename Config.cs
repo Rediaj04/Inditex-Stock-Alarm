@@ -10,6 +10,12 @@ public sealed class AppConfig
     public bool SoundEnabled { get; set; } = true;
     public bool OpenInBrave { get; set; } = true;
     public string NtfyTopic { get; set; } = "";
+    public string SoundMode { get; set; } = "both";
+    public bool GentleMode { get; set; }
+    public bool ScheduleEnabled { get; set; }
+    public string ScheduleStart { get; set; } = "08:00";
+    public string ScheduleEnd { get; set; } = "24:00";
+    public string Theme { get; set; } = "dark";
     public List<ItemConfig> Items { get; set; } = new();
 
     private static readonly JsonSerializerOptions WriteOpts = new() { WriteIndented = true };

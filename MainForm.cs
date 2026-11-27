@@ -17,6 +17,8 @@ public sealed class MainForm : Form
     private readonly NotifyIcon _tray;
     private readonly System.Windows.Forms.Timer _alertReset = new() { Interval = 46000 };
     private readonly System.Windows.Forms.Timer _focusBrave = new() { Interval = 1600 };
+    private readonly System.Windows.Forms.Timer _snoozeTimer = new() { Interval = 30 * 60 * 1000 };
+    private long _snoozeUntilTicks;
     private readonly string _logDir;
 
     private EdgeCdp? _edge;
@@ -31,6 +33,7 @@ public sealed class MainForm : Form
     private long _muteUntilTicks;
     private bool _soundEnabled;
     private bool _allowFast;
+    private bool _schedulePaused;
     private string? _updateTag;
 
     private Label _pill = null!;
@@ -52,6 +55,8 @@ public sealed class MainForm : Form
         _intervalSec = Math.Clamp(_config.IntervalSeconds, _allowFast ? 5 : 15, 120);
         _soundEnabled = _config.SoundEnabled;
         _alarm.Enabled = _soundEnabled;
+        _alarm.Mode = _config.SoundMode;
+        Palette.Apply(_config.Theme);
 
         foreach (var itemConfig in _config.Items)
         {
@@ -84,6 +89,13 @@ public sealed class MainForm : Form
         {
             _focusBrave.Stop();
             NativeMethods.FocusWindow("Brave");
+        };
+
+        _snoozeTimer.Tick += (_, _) =>
+        {
+            _snoozeTimer.Stop();
+            if (_cts is not null) SetPill("● VIGILANDO", Palette.Green, Palette.GreenBg);
+            Log("Snooze terminado: vuelven los avisos.", LogKind.Info);
         };
 
         FormClosing += OnFormClosing;
@@ -327,6 +339,12 @@ public sealed class MainForm : Form
         var btnBrave = MakeButton("Abrir en Brave", Palette.Chip, Palette.Text, 142);
         btnBrave.Click += (_, _) => OpenAvailableInBrave();
 
+        var btnSettings = MakeButton("⚙ Ajustes", Palette.Chip, Palette.Text, 106);
+        btnSettings.Click += (_, _) => OpenSettings();
+
+        var btnSnooze = MakeButton("Snooze 30m", Palette.Chip, Palette.Text, 118);
+        btnSnooze.Click += (_, _) => Snooze();
+
         _btnSilence = MakeButton("Silenciar", Palette.Red, Color.White, 105);
         _btnSilence.Enabled = false;
         _btnSilence.Click += (_, _) =>
@@ -344,7 +362,7 @@ public sealed class MainForm : Form
             Margin = new Padding(10, 16, 0, 0)
         };
 
-        bar.Controls.AddRange(new Control[] { _btnToggle, _num, lblSeg, _btnLock, _btnSound, btnTest, btnBrave, _btnSilence, hint });
+        bar.Controls.AddRange(new Control[] { _btnToggle, _num, lblSeg, _btnLock, _btnSound, btnTest, btnBrave, btnSettings, btnSnooze, _btnSilence, hint });
         return bar;
     }
 
@@ -403,6 +421,43 @@ public sealed class MainForm : Form
     {
         SetStartup(!File.Exists(StartupShortcutPath));
         ApplyStartupState();
+    }
+
+    private int EffectiveInterval => _config.GentleMode ? Math.Max(_intervalSec, 45) : _intervalSec;
+
+    private bool InSchedule()
+    {
+        if (!_config.ScheduleEnabled) return true;
+
+        var start = TimeSpan.TryParse(_config.ScheduleStart, out var s) ? s : TimeSpan.Zero;
+        var end = TimeSpan.TryParse(_config.ScheduleEnd, out var e) ? e : TimeSpan.FromHours(24);
+        if (start == end) return true;
+
+        var now = DateTime.Now.TimeOfDay;
+        return end < start ? now >= start || now < end : now >= start && now < end;
+    }
+
+    private void OpenSettings()
+    {
+        using var dialog = new SettingsDialog(_config);
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        _config.SoundMode = dialog.SoundMode;
+        _config.NtfyTopic = dialog.NtfyTopic;
+        _config.ScheduleEnabled = dialog.ScheduleEnabled;
+        _config.ScheduleStart = dialog.ScheduleStart;
+        _config.ScheduleEnd = dialog.ScheduleEnd;
+        _config.GentleMode = dialog.GentleMode;
+        _config.Theme = dialog.Theme;
+        _config.Save(AppPaths.DataDir);
+
+        _alarm.Mode = _config.SoundMode;
+        Log("Ajustes guardados.", LogKind.Ok);
+        UpdateFooter();
+
+        if (dialog.ThemeChanged)
+            MessageBox.Show(this, "El tema se aplicará la próxima vez que abras la app.", "Tema",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     private void ToggleFast()
@@ -658,6 +713,109 @@ public sealed class MainForm : Form
         return await SizeProbeService.ProbeAsync(_edge, url);
     }
 
+    private void ShowItemMenu(MonitorItem item, Control anchor)
+    {
+        var menu = new ContextMenuStrip();
+        menu.Items.Add("Comprobar ahora", null, (_, _) => CheckNow(item));
+        menu.Items.Add("Editar tallas / nombre…", null, (_, _) => EditItem(item));
+        menu.Items.Add(item.Paused ? "Reanudar" : "Pausar", null, (_, _) => TogglePause(item));
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Eliminar", null, (_, _) => RemoveItem(item));
+        menu.Show(anchor, new Point(0, anchor.Height));
+    }
+
+    private void TogglePause(MonitorItem item)
+    {
+        item.Paused = !item.Paused;
+        if (item.Paused)
+        {
+            item.Available = false;
+            item.StatusText = "PAUSADO";
+            item.StatusColor = Palette.Muted;
+        }
+
+        UpdateRow(item);
+        Log(item.Paused ? $"Pausado: {item.DisplayName}" : $"Reanudado: {item.DisplayName}", LogKind.Info);
+        UpdateFooter();
+    }
+
+    private async Task EnsurePageAsync(MonitorItem item, CancellationToken ct)
+    {
+        if (_edge is null)
+        {
+            var edgePath = EdgeCdp.FindEdge()
+                           ?? throw new InvalidOperationException("No encuentro msedge.exe en este PC.");
+            _edge = new EdgeCdp(edgePath, Path.Combine(AppPaths.DataDir, "edge-profile"));
+            await _edge.StartAsync(item.Config.Url, ct, HeadlessArgs);
+        }
+
+        if (item.Page is not null && item.Page.IsOpen) return;
+
+        item.Page = await _edge.NewTabAsync(item.Config.Url, ct);
+        await item.Page.EnableFastModeAsync(ct);
+        await item.Page.WaitForAsync("document.readyState !== 'loading'", 15000, ct);
+        await Task.Delay(800, ct);
+        item.FreshlyLoaded = true;
+    }
+
+    private async void CheckNow(MonitorItem item)
+    {
+        try
+        {
+            Log($"Comprobando ahora: {item.DisplayName}…", LogKind.Info);
+            var ct = _cts?.Token ?? CancellationToken.None;
+            await EnsurePageAsync(item, ct);
+            var result = await CheckItemAsync(item, ct);
+            await ApplyResultsAsync(new[] { result }, ct);
+        }
+        catch (Exception ex)
+        {
+            Log("No pude comprobar ahora: " + ex.Message, LogKind.Error);
+        }
+    }
+
+    private void EditItem(MonitorItem item)
+    {
+        using var dialog = new EditItemDialog(item);
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        item.Config.Name = dialog.ItemName;
+        item.Config.Sizes = string.Join(",", dialog.SelectedSizes);
+        item.Sizes = dialog.SelectedSizes;
+        _config.Save(AppPaths.DataDir);
+        UpdateRow(item);
+        Log($"Editado: {item.DisplayName} · tallas {string.Join(",", item.Sizes)}", LogKind.Ok);
+    }
+
+    private void Snooze()
+    {
+        _snoozeUntilTicks = DateTime.UtcNow.AddMinutes(30).Ticks;
+        _alarm.Silence();
+        _btnSilence.Enabled = false;
+        if (_cts is not null) SetPill("● SNOOZE 30 MIN", Palette.Amber, Palette.AmberBg);
+        Log("Avisos silenciados 30 minutos (la vigilancia sigue).", LogKind.Warn);
+        _snoozeTimer.Stop();
+        _snoozeTimer.Start();
+    }
+
+    private void PauseUrls(IReadOnlyList<string> urls)
+    {
+        foreach (var item in _items)
+        {
+            if (item.Paused) continue;
+            if (!urls.Any(u => string.Equals(u, item.Config.Url, StringComparison.OrdinalIgnoreCase))) continue;
+
+            item.Paused = true;
+            item.Available = false;
+            item.StatusText = "PAUSADO";
+            item.StatusColor = Palette.Muted;
+            UpdateRow(item);
+            Log($"Pausado tras la compra: {item.DisplayName}", LogKind.Ok);
+        }
+
+        UpdateFooter();
+    }
+
     private async void RemoveItem(MonitorItem item)
     {
         _items.Remove(item);
@@ -777,12 +935,26 @@ public sealed class MainForm : Form
         remove.FlatAppearance.BorderSize = 0;
         remove.Click += (_, _) => RemoveItem(item);
 
-        panel.Controls.AddRange(new Control[] { name, sub, status, remove });
+        var menu = new Button
+        {
+            Text = "⋯",
+            Size = new Size(28, 28),
+            BackColor = Palette.Card,
+            ForeColor = Palette.Muted,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand,
+            TabStop = true
+        };
+        menu.FlatAppearance.BorderSize = 0;
+        menu.Click += (_, _) => ShowItemMenu(item, menu);
+
+        panel.Controls.AddRange(new Control[] { name, sub, status, menu, remove });
         panel.Resize += (_, _) =>
         {
             var width = panel.ClientSize.Width;
             var removeX = Math.Max(40, width - remove.Width - 10);
             remove.Location = new Point(removeX, Math.Max(0, (panel.Height - remove.Height) / 2));
+            menu.Location = new Point(Math.Max(10, removeX - menu.Width - 4), Math.Max(0, (panel.Height - menu.Height) / 2));
 
             var statusX = Math.Max(150, Math.Min(width / 2, width - 260));
             name.Width = Math.Max(80, statusX - 30);
@@ -790,11 +962,11 @@ public sealed class MainForm : Form
             status.Bounds = new Rectangle(
                 statusX,
                 Math.Max(0, (panel.Height - statusHeight) / 2),
-                Math.Max(80, removeX - statusX - 10),
+                Math.Max(80, menu.Left - statusX - 10),
                 statusHeight);
         };
 
-        _rows[item.Config.Url] = new ItemRow(name, sub, status, panel, remove);
+        _rows[item.Config.Url] = new ItemRow(name, sub, status, panel, remove, menu);
         return panel;
     }
 
@@ -888,7 +1060,7 @@ public sealed class MainForm : Form
             _btnToggle.BackColor = Palette.Red;
             _btnToggle.ForeColor = Color.White;
             SetPill("● VIGILANDO", Palette.Green, Palette.GreenBg);
-            Log($"Vigilando {_items.Count} producto(s) cada {_intervalSec} s. Sonido: {(_soundEnabled ? "sí" : "no")}.", LogKind.Info);
+            Log($"Vigilando {_items.Count} producto(s) cada {EffectiveInterval} s{(_config.GentleMode ? " (modo suave)" : "")}. Sonido: {(_soundEnabled ? _config.SoundMode : "no")}.", LogKind.Info);
         }
         catch (Exception ex)
         {
@@ -956,13 +1128,41 @@ public sealed class MainForm : Form
     {
         while (!ct.IsCancellationRequested)
         {
+            if (!InSchedule())
+            {
+                if (!_schedulePaused)
+                {
+                    _schedulePaused = true;
+                    SetPill("● FUERA DE HORARIO", Palette.Muted, Palette.Chip);
+                    Log("Fuera del horario configurado: vigilancia en pausa.", LogKind.Info);
+                }
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(30), ct);
+                }
+                catch
+                {
+                    break;
+                }
+
+                continue;
+            }
+
+            if (_schedulePaused)
+            {
+                _schedulePaused = false;
+                if (_cts is not null) SetPill("● VIGILANDO", Palette.Green, Palette.GreenBg);
+                Log("Dentro del horario: reanudando vigilancia.", LogKind.Info);
+            }
+
             var started = DateTime.UtcNow;
             try
             {
-                var items = _items.ToList();
+                var items = _items.Where(i => !i.Paused).ToList();
                 if (items.Count == 0)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(_intervalSec), ct);
+                    await Task.Delay(TimeSpan.FromSeconds(EffectiveInterval), ct);
                     continue;
                 }
 
@@ -997,11 +1197,11 @@ public sealed class MainForm : Form
             }
 
             var elapsed = (DateTime.UtcNow - started).TotalSeconds;
-            var wait = Math.Max(1, _intervalSec - elapsed);
+            var wait = Math.Max(1, EffectiveInterval - elapsed);
 
             if (_failStreak > 0)
             {
-                var backoff = Math.Min(180, _intervalSec * Math.Pow(1.6, Math.Min(_failStreak, 5)));
+                var backoff = Math.Min(180, EffectiveInterval * Math.Pow(1.6, Math.Min(_failStreak, 5)));
                 if (backoff > wait)
                 {
                     wait = backoff;
@@ -1228,6 +1428,12 @@ public sealed class MainForm : Form
 
     private async Task OnStockAsync(MonitorItem item, bool transition)
     {
+        if (DateTime.UtcNow.Ticks < _snoozeUntilTicks)
+        {
+            Log($"Aviso omitido (snooze): {item.DisplayName}", LogKind.Check);
+            return;
+        }
+
         var detail = string.Join(" · ",
             new[]
             {
@@ -1271,6 +1477,11 @@ public sealed class MainForm : Form
                 _alertTestMode = test;
                 var form = new AlertForm();
                 form.Confirmed += OnAlertConfirmed;
+                form.Bought += (_, _) =>
+                {
+                    PauseUrls(form.Urls);
+                    _alarm.Silence();
+                };
                 form.SilenceRequested += (_, _) =>
                 {
                     _alarm.Silence();
@@ -1447,7 +1658,7 @@ public sealed class MainForm : Form
         var last = _lastCheckUtc == DateTime.MinValue ? "—" : _lastCheckUtc.ToLocalTime().ToString("HH:mm:ss");
         var version = typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "?";
         var update = _updateTag is null ? "" : $" · NUEVA v{_updateTag}";
-        var text = $"v{version}{update} · PC sin suspensión · última comprobación {last} · cada {_intervalSec} s (mín. {(_allowFast ? 5 : 15)} s) · " +
+        var text = $"v{version}{update} · PC sin suspensión · última comprobación {last} · cada {EffectiveInterval} s (mín. {(_allowFast ? 5 : 15)} s) · " +
                    $"{_items.Count} producto(s) · comprobaciones {_checks} · fallos {_failStreak} · " +
                    $"sonido {(_soundEnabled ? "on" : "off")} · Brave {(FindBrave() is null ? "no" : "ok")} · Edge {(_edge is null ? "—" : "ok")}";
 
@@ -1518,7 +1729,7 @@ public sealed class MainForm : Form
                 LogKind.Ok => Palette.Green,
                 LogKind.Warn => Palette.Amber,
                 LogKind.Error => Palette.Red,
-                LogKind.Alert => Color.FromArgb(255, 120, 150),
+                LogKind.Alert => Palette.Red,
                 LogKind.Check => Color.FromArgb(150, 160, 185),
                 _ => Palette.Text
             };
@@ -1541,7 +1752,7 @@ public sealed class MainForm : Form
         else Apply();
     }
 
-    private sealed record ItemRow(Label Name, Label Sub, Label Status, Panel Panel, Button Remove);
+    private sealed record ItemRow(Label Name, Label Sub, Label Status, Panel Panel, Button Remove, Button Menu);
 
     private enum LogKind
     {
@@ -1555,19 +1766,59 @@ public sealed class MainForm : Form
 
     private static class Palette
     {
-        public static readonly Color Bg = Color.FromArgb(15, 17, 22);
-        public static readonly Color Card = Color.FromArgb(23, 26, 33);
-        public static readonly Color CardBorder = Color.FromArgb(38, 43, 56);
-        public static readonly Color Text = Color.FromArgb(232, 235, 242);
-        public static readonly Color Muted = Color.FromArgb(138, 147, 168);
-        public static readonly Color Green = Color.FromArgb(64, 214, 128);
-        public static readonly Color GreenBg = Color.FromArgb(17, 43, 29);
-        public static readonly Color Red = Color.FromArgb(255, 77, 109);
-        public static readonly Color RedBg = Color.FromArgb(61, 17, 28);
-        public static readonly Color Amber = Color.FromArgb(246, 173, 60);
-        public static readonly Color AmberBg = Color.FromArgb(52, 36, 12);
-        public static readonly Color Chip = Color.FromArgb(30, 34, 44);
-        public static readonly Color LogBg = Color.FromArgb(11, 13, 17);
-        public static readonly Color Blue = Color.FromArgb(96, 165, 250);
+        public static Color Bg = Color.FromArgb(15, 17, 22);
+        public static Color Card = Color.FromArgb(23, 26, 33);
+        public static Color CardBorder = Color.FromArgb(38, 43, 56);
+        public static Color Text = Color.FromArgb(232, 235, 242);
+        public static Color Muted = Color.FromArgb(138, 147, 168);
+        public static Color Green = Color.FromArgb(64, 214, 128);
+        public static Color GreenBg = Color.FromArgb(17, 43, 29);
+        public static Color Red = Color.FromArgb(255, 77, 109);
+        public static Color RedBg = Color.FromArgb(61, 17, 28);
+        public static Color Amber = Color.FromArgb(246, 173, 60);
+        public static Color AmberBg = Color.FromArgb(52, 36, 12);
+        public static Color Chip = Color.FromArgb(30, 34, 44);
+        public static Color LogBg = Color.FromArgb(11, 13, 17);
+        public static Color Blue = Color.FromArgb(96, 165, 250);
+
+        public static void Apply(string? theme)
+        {
+            var light = string.Equals(theme, "light", StringComparison.OrdinalIgnoreCase);
+
+            if (light)
+            {
+                Bg = Color.FromArgb(245, 247, 251);
+                Card = Color.White;
+                CardBorder = Color.FromArgb(214, 220, 230);
+                Text = Color.FromArgb(26, 29, 36);
+                Muted = Color.FromArgb(95, 104, 120);
+                Green = Color.FromArgb(16, 150, 80);
+                GreenBg = Color.FromArgb(220, 245, 230);
+                Red = Color.FromArgb(200, 40, 65);
+                RedBg = Color.FromArgb(252, 228, 232);
+                Amber = Color.FromArgb(170, 110, 10);
+                AmberBg = Color.FromArgb(252, 240, 210);
+                Chip = Color.FromArgb(233, 237, 244);
+                LogBg = Color.White;
+                Blue = Color.FromArgb(30, 110, 220);
+            }
+            else
+            {
+                Bg = Color.FromArgb(15, 17, 22);
+                Card = Color.FromArgb(23, 26, 33);
+                CardBorder = Color.FromArgb(38, 43, 56);
+                Text = Color.FromArgb(232, 235, 242);
+                Muted = Color.FromArgb(138, 147, 168);
+                Green = Color.FromArgb(64, 214, 128);
+                GreenBg = Color.FromArgb(17, 43, 29);
+                Red = Color.FromArgb(255, 77, 109);
+                RedBg = Color.FromArgb(61, 17, 28);
+                Amber = Color.FromArgb(246, 173, 60);
+                AmberBg = Color.FromArgb(52, 36, 12);
+                Chip = Color.FromArgb(30, 34, 44);
+                LogBg = Color.FromArgb(11, 13, 17);
+                Blue = Color.FromArgb(96, 165, 250);
+            }
+        }
     }
 }
