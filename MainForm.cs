@@ -12,7 +12,7 @@ public sealed class MainForm : Form
 
     private readonly AppConfig _config;
     private readonly List<MonitorItem> _items = new();
-    private readonly Dictionary<string, ItemRow> _rows = new();
+    private readonly Dictionary<string, RowGroup> _rows = new();
     private readonly AlarmPlayer _alarm = new();
     private readonly NotifyIcon _tray;
     private readonly System.Windows.Forms.Timer _alertReset = new() { Interval = 46000 };
@@ -767,29 +767,37 @@ public sealed class MainForm : Form
         return await SizeProbeService.ProbeAsync(_edge, url);
     }
 
-    private void ShowItemMenu(MonitorItem item, Control anchor)
+    private void ShowGroupMenu(List<MonitorItem> members, Control anchor)
     {
+        var allPaused = members.All(m => m.Paused);
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Comprobar ahora", null, (_, _) => CheckNow(item));
-        menu.Items.Add("Editar tallas / nombre…", null, (_, _) => EditItem(item));
-        menu.Items.Add(item.Paused ? "Reanudar" : "Pausar", null, (_, _) => TogglePause(item));
+        menu.Items.Add("Comprobar ahora", null, (_, _) =>
+        {
+            foreach (var member in members) CheckNow(member);
+        });
+        menu.Items.Add("Editar tallas / nombre…", null, (_, _) => EditMembers(members));
+        menu.Items.Add(allPaused ? "Reanudar" : "Pausar", null, (_, _) => ToggleMembers(members));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Eliminar", null, (_, _) => RemoveItem(item));
+        menu.Items.Add("Eliminar", null, async (_, _) => await RemoveMembersAsync(members));
         menu.Show(anchor, new Point(0, anchor.Height));
     }
 
-    private void TogglePause(MonitorItem item)
+    private void ToggleMembers(List<MonitorItem> members)
     {
-        item.Paused = !item.Paused;
-        if (item.Paused)
+        var pause = !members.All(m => m.Paused);
+        foreach (var member in members)
         {
-            item.Available = false;
-            item.StatusText = "PAUSADO";
-            item.StatusColor = Palette.Muted;
+            member.Paused = pause;
+            if (pause)
+            {
+                member.Available = false;
+                member.StatusText = "PAUSADO";
+                member.StatusColor = Palette.Muted;
+            }
         }
 
-        UpdateRow(item);
-        Log(item.Paused ? $"Pausado: {item.DisplayName}" : $"Reanudado: {item.DisplayName}", LogKind.Info);
+        UpdateRow(members[0]);
+        Log(pause ? $"Pausado: {members[0].DisplayName}" : $"Reanudado: {members[0].DisplayName}", LogKind.Info);
         UpdateFooter();
     }
 
@@ -828,17 +836,21 @@ public sealed class MainForm : Form
         }
     }
 
-    private void EditItem(MonitorItem item)
+    private void EditMembers(List<MonitorItem> members)
     {
-        using var dialog = new EditItemDialog(item);
+        using var dialog = new EditItemDialog(members[0]);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
-        item.Config.Name = dialog.ItemName;
-        item.Config.Sizes = string.Join(",", dialog.SelectedSizes);
-        item.Sizes = dialog.SelectedSizes;
+        foreach (var member in members)
+        {
+            member.Config.Name = dialog.ItemName;
+            member.Config.Sizes = string.Join(",", dialog.SelectedSizes);
+            member.Sizes = dialog.SelectedSizes;
+        }
+
         _config.Save(AppPaths.DataDir);
-        UpdateRow(item);
-        Log($"Editado: {item.DisplayName} · tallas {string.Join(",", item.Sizes)}", LogKind.Ok);
+        RefreshItems();
+        Log($"Editado: {members[0].DisplayName} · tallas {string.Join(",", members[0].Sizes)}", LogKind.Ok);
     }
 
     private void Snooze()
@@ -881,16 +893,17 @@ public sealed class MainForm : Form
         UpdateFooter();
     }
 
-    private async void RemoveItem(MonitorItem item)
+    private async Task RemoveMembersAsync(List<MonitorItem> members)
     {
-        _items.Remove(item);
-        _config.Items.RemoveAll(c => string.Equals(c.Url, item.Config.Url, StringComparison.OrdinalIgnoreCase));
-        _config.Save(AppPaths.DataDir);
-
-        var page = item.Page;
-        item.Page = null;
-        if (page is not null)
+        foreach (var member in members.ToList())
         {
+            _items.Remove(member);
+            _config.Items.RemoveAll(c => string.Equals(c.Url, member.Config.Url, StringComparison.OrdinalIgnoreCase));
+
+            var page = member.Page;
+            member.Page = null;
+            if (page is null) continue;
+
             try
             {
                 await page.DisposeAsync();
@@ -901,8 +914,52 @@ public sealed class MainForm : Form
             }
         }
 
+        _config.Save(AppPaths.DataDir);
         RefreshItems();
-        Log($"Producto quitado: {item.DisplayName}", LogKind.Info);
+        Log($"Producto quitado: {members[0].DisplayName}", LogKind.Info);
+    }
+
+    private static string GroupKeyOf(MonitorItem item)
+    {
+        try
+        {
+            return new Uri(item.Config.Url).AbsolutePath.ToLowerInvariant();
+        }
+        catch
+        {
+            return item.Config.Url;
+        }
+    }
+
+    private static string GroupStatus(List<MonitorItem> members, out Color color)
+    {
+        if (members.All(m => m.Paused))
+        {
+            color = Palette.Muted;
+            return "PAUSADO";
+        }
+
+        var available = members.Where(m => m.Available).ToList();
+        if (available.Count > 0)
+        {
+            color = available.Any(m => m.StatusText.Contains("POCAS")) ? Palette.Amber : Palette.Green;
+            if (available.Count == 1)
+            {
+                var name = available[0].ColorName;
+                return string.IsNullOrWhiteSpace(name) ? "DISPONIBLE" : "DISPONIBLE · " + name;
+            }
+
+            return $"DISPONIBLE · {available.Count} colores";
+        }
+
+        if (members.Any(m => m.LastError is not null))
+        {
+            color = Palette.Amber;
+            return "ERROR";
+        }
+
+        color = Palette.Muted;
+        return members.Any(m => string.IsNullOrEmpty(m.LastError)) ? "agotada" : "—";
     }
 
     private void RefreshItems()
@@ -919,8 +976,12 @@ public sealed class MainForm : Form
         _itemsEmpty.Visible = _items.Count == 0;
         _itemsPanel.Controls.Add(_itemsEmpty);
 
-        foreach (var item in _items)
-            _itemsPanel.Controls.Add(BuildRow(item));
+        foreach (var group in _items.GroupBy(GroupKeyOf))
+        {
+            var members = group.ToList();
+            _itemsPanel.Controls.Add(BuildRow(members));
+            UpdateRow(members[0]);
+        }
 
         _itemsPanel.ResumeLayout();
         ReflowRows();
@@ -932,12 +993,14 @@ public sealed class MainForm : Form
     {
         if (_root is null) return;
 
-        var height = Math.Min(Px(260), Math.Max(Px(120), Px(64) + _items.Count * Px(84)));
+        var groups = _items.Select(GroupKeyOf).Distinct().Count();
+        var height = Math.Min(Px(260), Math.Max(Px(120), Px(64) + groups * Px(84)));
         _root.RowStyles[2].Height = height;
     }
 
-    private Control BuildRow(MonitorItem item)
+    private Control BuildRow(List<MonitorItem> members)
     {
+        var item = members[0];
         var nameFont = new Font("Segoe UI Semibold", 10.5f * _uiScale);
         var subFont = new Font("Segoe UI", 8.5f * _uiScale);
         var statusFont = new Font("Segoe UI Semibold", 10f * _uiScale);
@@ -1027,7 +1090,7 @@ public sealed class MainForm : Form
             TabStop = true
         };
         menu.FlatAppearance.BorderSize = 0;
-        menu.Click += (_, _) => ShowItemMenu(item, menu);
+        menu.Click += (_, _) => ShowGroupMenu(members, menu);
 
         panel.Controls.AddRange(new Control[] { thumb, name, sub, mid, status, menu });
 
@@ -1037,13 +1100,19 @@ public sealed class MainForm : Form
             menu.Location = new Point(Math.Max(Px(10), width - menu.Width - Px(10)), Math.Max(0, (panel.Height - menu.Height) / 2));
             thumb.Location = new Point(Px(14), Math.Max(0, (panel.Height - thumb.Height) / 2));
 
-            var statusX = Math.Max(Px(180), Math.Min(width / 2 + Px(30), width - Px(260)));
-            name.Width = Math.Max(Px(80), statusX - Px(78));
-            sub.Width = Math.Max(Px(80), statusX - Px(82));
+            var menuX = Math.Max(Px(10), width - menu.Width - Px(10));
+            var statusX = Math.Max(Px(180), Math.Min(Math.Max(Px(300), width - Px(310)), menuX - Px(120)));
+            var midX = Math.Max(Px(240), (int)(width * 0.46));
+            var midW = statusX - midX - Px(10);
+            mid.Visible = midW >= Px(80);
+            mid.Location = new Point(midX, top + nameHeight + 4);
+            mid.Width = Math.Max(Px(60), midW);
+            name.Width = Math.Max(Px(80), (mid.Visible ? midX : statusX) - Px(80));
+            sub.Width = Math.Max(Px(80), (mid.Visible ? midX : statusX) - Px(84));
             status.Bounds = new Rectangle(
                 statusX,
                 Math.Max(0, (panel.Height - statusHeight) / 2),
-                Math.Max(Px(80), menu.Left - statusX - Px(10)),
+                Math.Max(Px(80), menuX - statusX - Px(10)),
                 statusHeight);
         }
 
@@ -1053,7 +1122,12 @@ public sealed class MainForm : Form
         if (!string.IsNullOrWhiteSpace(item.ImageUrl))
             LoadThumbnailAsync(thumb, item.ImageUrl!);
 
-        _rows[item.Config.Url] = new ItemRow(name, sub, mid, status, panel, menu, thumb);
+        _rows[GroupKeyOf(item)] = new RowGroup
+        {
+            Key = GroupKeyOf(item),
+            Members = members,
+            Ui = new ItemRow(name, sub, mid, status, panel, menu, thumb)
+        };
         return panel;
     }
 
@@ -1112,25 +1186,30 @@ public sealed class MainForm : Form
 
     private void UpdateRow(MonitorItem item)
     {
-        if (!_rows.TryGetValue(item.Config.Url, out var row)) return;
+        if (!_rows.TryGetValue(GroupKeyOf(item), out var group)) return;
+
+        var members = group.Members;
+        var first = members[0];
+        var row = group.Ui;
 
         void Apply()
         {
-            row.Name.Text = item.DisplayName;
-            row.Sub.Text = item.LastError is null
-                ? (string.IsNullOrWhiteSpace(item.ColorName) ? "" : item.ColorName)
-                : "error: " + Truncate(item.LastError, 110);
-            row.Mid.Text = item.LastError is null
-                ? "tallas " + string.Join(",", item.Sizes)
-                  + (string.IsNullOrWhiteSpace(item.PriceText) ? "" : " · " + item.PriceText)
-                : "";
-            row.Status.Text = item.LastError is null ? item.StatusText : "ERROR";
-            row.Status.ForeColor = item.LastError is not null
-                ? Palette.Amber
-                : item.StatusColor;
+            var colorSummary = string.Join(" · ",
+                members.Select(m => m.ColorName).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct());
+            var price = members.Select(m => m.PriceText)
+                .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p)) ?? "";
 
-            if (!string.IsNullOrWhiteSpace(item.ImageUrl) && row.Thumb.Image is null)
-                LoadThumbnailAsync(row.Thumb, item.ImageUrl!);
+            row.Name.Text = first.DisplayName;
+            row.Sub.Text = colorSummary;
+            row.Mid.Text = "tallas " + string.Join(",", first.Sizes)
+                           + (price.Length > 0 ? " · " + price : "");
+            row.Status.Text = GroupStatus(members, out var statusColor);
+            row.Status.ForeColor = statusColor;
+
+            var image = members.Select(m => m.ImageUrl)
+                .FirstOrDefault(u => !string.IsNullOrWhiteSpace(u));
+            if (!string.IsNullOrWhiteSpace(image) && row.Thumb.Image is null)
+                LoadThumbnailAsync(row.Thumb, image!);
         }
 
         if (InvokeRequired) BeginInvoke(new Action(Apply));
@@ -1623,7 +1702,7 @@ public sealed class MainForm : Form
         var sizesAvailable = item.StatusText;
         Log($"🚨 STOCK · {item.DisplayName} · {sizesAvailable} {(string.IsNullOrEmpty(item.PriceText) ? "" : "· " + item.PriceText)}", LogKind.Alert);
 
-        ShowAlert(new AlertItem(item.DisplayName, detail + " · " + sizesAvailable, item.PriceText, item.Config.Url), test: false);
+        ShowAlert(new AlertItem(item.DisplayName, detail + " · " + sizesAvailable, item.PriceText, item.Config.Url, item.ImageUrl), test: false);
         _alarm.Alarm($"¡Atención! Hay stock en {item.DisplayName}. Pulsa el botón grande cuando lo veas.");
         SendPush(item);
 
@@ -1660,6 +1739,14 @@ public sealed class MainForm : Form
                 {
                     PauseUrls(form.Urls);
                     _alarm.Silence();
+                };
+                form.OpenRequested += (_, _) =>
+                {
+                    foreach (var url in form.Urls.Distinct(StringComparer.OrdinalIgnoreCase))
+                        OpenInBrave(url);
+
+                    _alarm.Silence();
+                    _btnSilence.Enabled = false;
                 };
                 form.SilenceRequested += (_, _) =>
                 {
@@ -1744,7 +1831,7 @@ public sealed class MainForm : Form
         var sample = _items.FirstOrDefault();
         var detail = sample is null ? "Azul lavado · tallas 44" : sample.Subtitle;
         var item = new AlertItem("PRUEBA · " + (sample?.DisplayName ?? "Jeans barrel"), detail, "17,99 €",
-            sample?.Config.Url ?? "https://www.bershka.com/");
+            sample?.Config.Url ?? "https://www.bershka.com/", sample?.ImageUrl);
         ShowAlert(item, test: true);
         if (_soundEnabled)
             _alarm.Alarm("Prueba de aviso. Así sonará. Pulsa el botón grande para parar la sirena.");
@@ -1973,6 +2060,13 @@ public sealed class MainForm : Form
     }
 
     private sealed record ItemRow(Label Name, Label Sub, Label Mid, Label Status, Panel Panel, Button Menu, PictureBox Thumb);
+
+    private sealed class RowGroup
+    {
+        public required string Key { get; init; }
+        public required List<MonitorItem> Members { get; init; }
+        public required ItemRow Ui { get; init; }
+    }
 
     private enum LogKind
     {

@@ -49,12 +49,12 @@ Portable: `config.json`, `logs/` and the internal browser profile are stored **n
 ## Features
 
 - Add any Inditex product by URL; the app reads the **real sizes** (M, L, 44, Única…) and lets you pick which ones to watch.
-- Several URLs at once (one row per colour of the same product).
+- Several colours of the same product are grouped in **one row**; alerts tell you which colour has stock.
 - **API mode**: after the first load it polls the site's JSON (faster, fewer requests, works even when the page blocks headless).
 - **Price, colour and thumbnail** in each row (image from the page).
 - 15 s minimum interval with a **lock**: unlocking it below 15 s shows a red warning about the risks.
 - **Backoff** on failures (30→60→120→180 s) and a **watchdog** that restarts Edge if it dies.
-- **Only-alarm popup** with a big OK button; the siren keeps playing until you press it.
+- **Alert window** with a large product image, price, big OK, **Open product** and **Already bought · pause** buttons; the siren keeps playing until you act.
 - **Snooze 30 min** (the same button cancels it), **pause per product**, and “already bought → pause this product”.
 - **Settings**: sound mode (siren+voice / siren / voice / beep / **your own WAV-MP3-WMA**), ntfy push with a test button, schedule, gentle mode, **start with Windows**, **start minimised**, **alert screen (detects your monitors)** , **UI scale (100/125/150 %)** and dark/light theme.
 - Tray tooltip with the current status. Prevents Windows from sleeping while watching.
@@ -222,12 +222,12 @@ Portable: `config.json`, `logs/` y el perfil interno del navegador se guardan **
 ## Qué hace
 
 - Añades cualquier producto de Inditex por URL; la app lee las **tallas reales** (M, L, 44, Única…) y te deja elegir cuáles vigilar.
-- Varias URLs a la vez (una fila por color del mismo producto).
+- Varios colores del mismo producto se agrupan en **una sola fila**; el aviso te dice qué color tiene stock.
 - **Modo API**: tras la primera carga consulta el JSON de la web (más rápido, menos peticiones y funciona aunque la página bloquee el headless).
 - **Precio, color y miniatura** en cada fila (imagen de la ficha).
 - Intervalo mínimo de 15 s con **candado**: si lo desbloqueas por debajo de 15 s sale un aviso rojo con los riesgos.
 - **Backoff** ante fallos (30→60→120→180 s) y **watchdog** que reinicia Edge si se cae.
-- **Ventana de aviso** con botón grande; la sirena no para hasta que lo pulsas.
+- **Ventana de aviso** con imagen grande, precio, botón OK, **Abrir ficha** y **Ya he comprado · pausar**; la sirena no para hasta que actúes.
 - **Snooze 30 min** (el mismo botón lo cancela), **pausar por producto** y “ya he comprado → pausar este producto”.
 - **Ajustes**: modo de sonido (sirena+voz / sirena / voz / pitido / **tu propio WAV-MP3-WMA**), ntfy con botón de prueba, horario, modo suave, **inicio con Windows**, **arrancar minimizada**, **pantalla de la alerta (detecta tus pantallas)**, **escala de interfaz (100/125/150 %)** y tema oscuro/claro.
 - Tooltip en la bandeja con el estado actual. Impide que Windows entre en suspensión mientras vigila.
