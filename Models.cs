@@ -27,6 +27,7 @@ public sealed class CheckPayload
     public string? StoreId { get; set; }
     public string? ProductId { get; set; }
     public string? ColorId { get; set; }
+    public string? Image { get; set; }
     public string? Reason { get; set; }
     public List<SizeResult> Sizes { get; set; } = new();
 }
@@ -51,6 +52,7 @@ public sealed class MonitorItem
     public string? ApiStoreId { get; set; }
     public string? ApiProductId { get; set; }
     public string? ApiColorId { get; set; }
+    public string? ImageUrl { get; set; }
     public string ProductName { get; set; } = "";
     public string ColorName { get; set; } = "";
     public bool Available { get; set; }

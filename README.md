@@ -51,13 +51,14 @@ Portable: `config.json`, `logs/` and the internal browser profile are stored **n
 - Add any Inditex product by URL; the app reads the **real sizes** (M, L, 44, Única…) and lets you pick which ones to watch.
 - Several URLs at once (one row per colour of the same product).
 - **API mode**: after the first load it polls the site's JSON (faster, fewer requests, works even when the page blocks headless).
-- **Price and colour** from that API.
+- **Price, colour and thumbnail** in each row (image from the page).
 - 15 s minimum interval with a **lock**: unlocking it below 15 s shows a red warning about the risks.
 - **Backoff** on failures (30→60→120→180 s) and a **watchdog** that restarts Edge if it dies.
 - **Only-alarm popup** with a big OK button; the siren keeps playing until you press it.
 - **Snooze 30 min** (the same button cancels it), **pause per product**, and “already bought → pause this product”.
-- **Settings**: sound mode (siren+voice / siren / voice / beep), ntfy push with a test button, schedule (e.g. 08:00–24:00), gentle mode (min 45 s), **start with Windows**, **alert screen** and dark/light theme.
-- Prevents Windows from sleeping while watching.
+- **Settings**: sound mode, ntfy push with a test button, schedule, gentle mode, **start with Windows**, **start minimised**, **alert screen**, **UI scale (100/125/150 %)** and dark/light theme.
+- **Keyboard shortcuts**: Space start/stop, M sound, S snooze, T test, L clear log.
+- Tray tooltip with the current status. Prevents Windows from sleeping while watching.
 - Optional **update notice** (not forced) when a newer GitHub Release exists.
 - Live log with a **clear** button (does not delete files) and daily log files; `logs\historial.csv` with every stock change.
 
@@ -68,7 +69,8 @@ Portable: `config.json`, `logs/` and the internal browser profile are stored **n
 1. Press **＋ Añadir producto**, paste one URL per line (several = several colours).
 2. Press **Buscar tallas**: the app opens the page in a hidden Edge and lists the real sizes with their state.
 3. Tick the sizes you want (available ones are pre-ticked). If the site cannot be read, type them by hand (`44`, `M,L`, `Única`).
-4. Press **INICIAR** (it also starts on launch). Minimise to the tray if you want.\n5. Per product, the **⋯** menu lets you check now, edit sizes/name, pause or delete.
+4. Press **INICIAR** (it also starts on launch). Minimise to the tray if you want.
+5. Per product, the **⋯** menu lets you check now, edit sizes/name, pause or delete.
 
 Small windows are supported: buttons wrap and rows are never clipped.
 
@@ -95,6 +97,8 @@ Small windows are supported: buttons wrap and rows are never clipped.
   "scheduleStart": "08:00",
   "scheduleEnd": "24:00",
   "theme": "dark",
+  "uiScale": 100,
+  "startMinimized": false,
   "alertScreen": -1,
   "items": [
     {
@@ -108,7 +112,8 @@ Small windows are supported: buttons wrap and rows are never clipped.
 
 - `intervalSeconds`: 15–120 (or 5–120 if you unlock the lock).
 - `soundMode`: `both`, `siren`, `voice`, `beep`.
-- `theme`: `dark` or `light` (applies on restart).\n- `alertScreen`: `-1` = default screen, `0` = first monitor, `1` = second monitor…
+- `theme`: `dark` or `light` (applies on restart).
+- `alertScreen`: `-1` = default screen, `0` = first monitor, `1` = second monitor…
 - `ntfyTopic`: if set, sends a push to ntfy.sh on stock.
 
 ## How detection works
@@ -201,13 +206,14 @@ Portable: `config.json`, `logs/` y el perfil interno del navegador se guardan **
 - Añades cualquier producto de Inditex por URL; la app lee las **tallas reales** (M, L, 44, Única…) y te deja elegir cuáles vigilar.
 - Varias URLs a la vez (una fila por color del mismo producto).
 - **Modo API**: tras la primera carga consulta el JSON de la web (más rápido, menos peticiones y funciona aunque la página bloquee el headless).
-- **Precio y color** desde esa API.
+- **Precio, color y miniatura** en cada fila (imagen de la ficha).
 - Intervalo mínimo de 15 s con **candado**: si lo desbloqueas por debajo de 15 s sale un aviso rojo con los riesgos.
 - **Backoff** ante fallos (30→60→120→180 s) y **watchdog** que reinicia Edge si se cae.
 - **Ventana de aviso** con botón grande; la sirena no para hasta que lo pulsas.
 - **Snooze 30 min** (el mismo botón lo cancela), **pausar por producto** y “ya he comprado → pausar este producto”.
-- **Ajustes**: modo de sonido (sirena+voz / sirena / voz / pitido), ntfy con botón de prueba, horario (p. ej. 08:00–24:00), modo suave (mín. 45 s), **inicio con Windows**, **pantalla de la alerta** y tema oscuro/claro.
-- Impide que Windows entre en suspensión mientras vigila.
+- **Ajustes**: modo de sonido, ntfy con botón de prueba, horario, modo suave, **inicio con Windows**, **arrancar minimizada**, **pantalla de la alerta**, **escala de interfaz (100/125/150 %)** y tema oscuro/claro.
+- **Atajos de teclado**: Espacio iniciar/parar, M sonido, S snooze, T probar, L limpiar registro.
+- Tooltip en la bandeja con el estado actual. Impide que Windows entre en suspensión mientras vigila.
 - **Aviso de actualización** opcional (no obligatorio) si hay un Release nuevo.
 - Registro en vivo con botón **limpiar** (no borra archivos), logs diarios y `logs\historial.csv` con cada cambio de stock.
 
@@ -218,7 +224,8 @@ Portable: `config.json`, `logs/` y el perfil interno del navegador se guardan **
 1. Pulsa **＋ Añadir producto** y pega una URL por línea (varias = varios colores).
 2. Pulsa **Buscar tallas**: la app abre la ficha en un Edge oculto y lista las tallas reales con su estado.
 3. Marca las que quieras (las disponibles vienen marcadas). Si la web no se deja leer, escríbelas a mano (`44`, `M,L`, `Única`).
-4. Pulsa **INICIAR** (también arranca al abrir). Minimiza a la bandeja si quieres.\n5. En cada producto, el menú **⋯** te deja comprobar ahora, editar tallas/nombre, pausar o eliminar.
+4. Pulsa **INICIAR** (también arranca al abrir). Minimiza a la bandeja si quieres.
+5. En cada producto, el menú **⋯** te deja comprobar ahora, editar tallas/nombre, pausar o eliminar.
 
 La ventana se adapta a tamaños pequeños: los botones se envuelven y las filas no se recortan.
 
@@ -245,6 +252,8 @@ La ventana se adapta a tamaños pequeños: los botones se envuelven y las filas 
   "scheduleStart": "08:00",
   "scheduleEnd": "24:00",
   "theme": "dark",
+  "uiScale": 100,
+  "startMinimized": false,
   "alertScreen": -1,
   "items": [
     {
@@ -258,7 +267,8 @@ La ventana se adapta a tamaños pequeños: los botones se envuelven y las filas 
 
 - `intervalSeconds`: 15–120 (o 5–120 si desbloqueas el candado).
 - `soundMode`: `both`, `siren`, `voice`, `beep`.
-- `theme`: `dark` o `light` (se aplica al reiniciar).\n- `alertScreen`: `-1` = pantalla predeterminada, `0` = primera pantalla, `1` = segunda…
+- `theme`: `dark` o `light` (se aplica al reiniciar).
+- `alertScreen`: `-1` = pantalla predeterminada, `0` = primera pantalla, `1` = segunda…
 - `ntfyTopic`: si lo rellenas, envía un push a ntfy.sh al detectar stock.
 
 ## Cómo detecta el stock

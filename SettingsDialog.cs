@@ -15,6 +15,8 @@ public sealed class SettingsDialog : Form
     private readonly ComboBox _theme;
     private readonly ComboBox _screen;
     private readonly CheckBox _startup;
+    private readonly CheckBox _startMinimized;
+    private readonly ComboBox _scale;
 
     public string SoundMode => SoundValues[Math.Max(0, _sound.SelectedIndex)];
     public string NtfyTopic => _ntfy.Text.Trim();
@@ -26,13 +28,15 @@ public sealed class SettingsDialog : Form
     public int AlertScreen => _screen.SelectedIndex <= 0 ? -1 : _screen.SelectedIndex - 1;
     public bool ThemeChanged => !string.Equals(Theme, _originalTheme, StringComparison.OrdinalIgnoreCase);
     public bool StartWithWindows => _startup.Checked;
+    public bool StartMinimized => _startMinimized.Checked;
+    public int UiScale => _scale.SelectedIndex == 2 ? 150 : _scale.SelectedIndex == 1 ? 125 : 100;
 
     public SettingsDialog(AppConfig config, bool startWithWindows = false)
     {
         _originalTheme = config.Theme;
 
         Text = "Ajustes";
-        ClientSize = new Size(700, 570);
+        ClientSize = new Size(700, 640);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -218,10 +222,20 @@ public sealed class SettingsDialog : Form
         };
         Controls.Add(_startup);
 
+        _startMinimized = new CheckBox
+        {
+            Text = "Arrancar minimizada",
+            Checked = config.StartMinimized,
+            AutoSize = true,
+            ForeColor = Color.White,
+            Location = new Point(250, y + 38)
+        };
+        Controls.Add(_startMinimized);
+
         var ok = new Button
         {
             Text = "Guardar",
-            Location = new Point(470, 504),
+            Location = new Point(470, 574),
             Size = new Size(200, 44),
             BackColor = Color.FromArgb(64, 214, 128),
             ForeColor = Color.FromArgb(8, 28, 17),
@@ -235,7 +249,7 @@ public sealed class SettingsDialog : Form
         var cancel = new Button
         {
             Text = "Cancelar",
-            Location = new Point(360, 504),
+            Location = new Point(360, 574),
             Size = new Size(100, 44),
             BackColor = Color.FromArgb(30, 34, 44),
             ForeColor = Color.White,

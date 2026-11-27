@@ -240,6 +240,9 @@ internal static class MonitorScripts
   if (!colors.length) return JSON.stringify({ ok: false, reason: 'sin-colores' });
 
   const agg = aggregate(colors);
+  const og = document.querySelector('meta[property="og:image"]');
+  const image = og && og.content ? new URL(og.content, location.href).href : '';
+
   return JSON.stringify({
     ok: true,
     storeId: String(storeId),
@@ -247,6 +250,7 @@ internal static class MonitorScripts
     colorId: String(agg.color.id),
     product: j.name,
     color: agg.color.name,
+    image: image,
     sizes: agg.sizes
   });
 })()

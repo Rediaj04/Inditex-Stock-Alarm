@@ -19,6 +19,9 @@ public sealed class MainForm : Form
     private readonly System.Windows.Forms.Timer _focusBrave = new() { Interval = 1600 };
     private readonly System.Windows.Forms.Timer _snoozeTimer = new() { Interval = 30 * 60 * 1000 };
     private long _snoozeUntilTicks;
+    private float _uiScale = 1f;
+    private static readonly HttpClient ThumbHttp = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private readonly Dictionary<string, Image> _thumbCache = new();
     private readonly string _logDir;
 
     private EdgeCdp? _edge;
@@ -54,6 +57,7 @@ public sealed class MainForm : Form
     public MainForm()
     {
         _config = AppConfig.Load(AppPaths.DataDir);
+        _uiScale = Math.Clamp(_config.UiScale, 100, 150) / 100f;
         _allowFast = _config.AllowFastInterval;
         _intervalSec = Math.Clamp(_config.IntervalSeconds, _allowFast ? 5 : 15, 120);
         _soundEnabled = _config.SoundEnabled;
@@ -106,6 +110,40 @@ public sealed class MainForm : Form
         Shown += OnShown;
     }
 
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        var editing = ActiveControl is TextBoxBase || ActiveControl is NumericUpDown || ActiveControl is ComboBox;
+
+        if (!editing)
+        {
+            switch (keyData)
+            {
+                case Keys.Space:
+                    _ = (_cts is null ? StartMonitorAsync() : StopMonitorAsync());
+                    return true;
+                case Keys.M:
+                    _soundEnabled = !_soundEnabled;
+                    ApplySoundState();
+                    _config.SoundEnabled = _soundEnabled;
+                    _config.Save(AppPaths.DataDir);
+                    if (!_soundEnabled) _alarm.Silence();
+                    Log(_soundEnabled ? "Sonido activado." : "Sonido silenciado.", LogKind.Info);
+                    return true;
+                case Keys.S:
+                    Snooze();
+                    return true;
+                case Keys.T:
+                    TestAlert();
+                    return true;
+                case Keys.L:
+                    _log.Clear();
+                    return true;
+            }
+        }
+
+        return base.ProcessCmdKey(ref msg, keyData);
+    }
+
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
@@ -127,6 +165,13 @@ public sealed class MainForm : Form
         UpdateFooter();
         await StartMonitorAsync();
         _ = CheckUpdatesAsync();
+
+        if (_config.StartMinimized)
+        {
+            Hide();
+            _tray.ShowBalloonTip(2500, "Inditex Stock Alarm",
+                "Vigilando en segundo plano. Doble clic en la bandeja para abrir.", ToolTipIcon.Info);
+        }
     }
 
     private async Task CheckUpdatesAsync()
@@ -229,7 +274,7 @@ public sealed class MainForm : Form
     {
         if (_content is null) return;
 
-        var width = Math.Min(1120, Math.Max(600, ClientSize.Width - 32));
+        var width = Math.Min(Px(1120), Math.Max(Px(600), ClientSize.Width - Px(32)));
         _content.Bounds = new Rectangle((ClientSize.Width - width) / 2, 0, width, ClientSize.Height);
     }
 
@@ -432,6 +477,8 @@ public sealed class MainForm : Form
         }
     }
 
+    private int Px(int value) => (int)Math.Round(value * _uiScale);
+
     private int EffectiveInterval => _config.GentleMode ? Math.Max(_intervalSec, 45) : _intervalSec;
 
     private bool InSchedule()
@@ -459,6 +506,8 @@ public sealed class MainForm : Form
         _config.GentleMode = dialog.GentleMode;
         _config.Theme = dialog.Theme;
         _config.AlertScreen = dialog.AlertScreen;
+        _config.StartMinimized = dialog.StartMinimized;
+        _config.UiScale = dialog.UiScale;
         _config.Save(AppPaths.DataDir);
 
         _alarm.Mode = _config.SoundMode;
@@ -912,34 +961,42 @@ public sealed class MainForm : Form
     {
         if (_root is null) return;
 
-        var height = Math.Min(230, Math.Max(96, 50 + _items.Count * 74));
+        var height = Math.Min(Px(230), Math.Max(Px(96), Px(58) + _items.Count * Px(84)));
         _root.RowStyles[2].Height = height;
     }
 
     private Control BuildRow(MonitorItem item)
     {
-        var nameFont = new Font("Segoe UI Semibold", 10.5f);
-        var subFont = new Font("Segoe UI", 8.5f);
-        var statusFont = new Font("Segoe UI Semibold", 10f);
+        var nameFont = new Font("Segoe UI Semibold", 10.5f * _uiScale);
+        var subFont = new Font("Segoe UI", 8.5f * _uiScale);
+        var statusFont = new Font("Segoe UI Semibold", 10f * _uiScale);
 
         var nameHeight = nameFont.Height + 2;
         var subHeight = subFont.Height + 2;
         var statusHeight = statusFont.Height + 8;
-        var top = 10;
-        var rowHeight = Math.Max(66, top + nameHeight + 4 + subHeight + 12);
+        var top = Px(14);
+        var rowHeight = Math.Max(Px(76), top + nameHeight + 4 + subHeight + 10);
 
         var panel = new Panel
         {
             Width = Math.Max(320, _itemsPanel.ClientSize.Width - 26 - SystemInformation.VerticalScrollBarWidth),
             Height = rowHeight,
             BackColor = Palette.Card,
-            Margin = new Padding(0, 0, 0, 8)
+            Margin = new Padding(0, 0, 0, Px(8))
         };
         panel.Paint += (_, e) =>
         {
             using var pen = new Pen(Palette.CardBorder);
             var r = panel.ClientRectangle;
             e.Graphics.DrawRectangle(pen, 0, 0, r.Width - 1, r.Height - 1);
+        };
+
+        var thumb = new PictureBox
+        {
+            Size = new Size(Px(44), Px(44)),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            BackColor = Palette.Chip,
+            Location = new Point(Px(14), (rowHeight - Px(44)) / 2)
         };
 
         var name = new Label
@@ -949,7 +1006,7 @@ public sealed class MainForm : Form
             ForeColor = Palette.Text,
             AutoSize = false,
             AutoEllipsis = true,
-            Location = new Point(14, top),
+            Location = new Point(Px(70), top),
             Size = new Size(300, nameHeight)
         };
 
@@ -960,7 +1017,7 @@ public sealed class MainForm : Form
             ForeColor = Palette.Muted,
             AutoSize = false,
             AutoEllipsis = true,
-            Location = new Point(15, top + nameHeight + 4),
+            Location = new Point(Px(71), top + nameHeight + 4),
             Size = new Size(300, subHeight)
         };
 
@@ -972,14 +1029,14 @@ public sealed class MainForm : Form
             AutoSize = false,
             AutoEllipsis = true,
             TextAlign = ContentAlignment.MiddleRight,
-            Location = new Point(320, (rowHeight - statusHeight) / 2),
+            Location = new Point(Px(320), (rowHeight - statusHeight) / 2),
             Size = new Size(300, statusHeight)
         };
 
         var menu = new Button
         {
             Text = "⋯",
-            Size = new Size(28, 28),
+            Size = new Size(Px(28), Px(28)),
             BackColor = Palette.Card,
             ForeColor = Palette.Muted,
             FlatStyle = FlatStyle.Flat,
@@ -989,27 +1046,31 @@ public sealed class MainForm : Form
         menu.FlatAppearance.BorderSize = 0;
         menu.Click += (_, _) => ShowItemMenu(item, menu);
 
-        panel.Controls.AddRange(new Control[] { name, sub, status, menu });
+        panel.Controls.AddRange(new Control[] { thumb, name, sub, status, menu });
 
         void LayoutRow()
         {
             var width = panel.ClientSize.Width;
-            menu.Location = new Point(Math.Max(10, width - menu.Width - 10), Math.Max(0, (panel.Height - menu.Height) / 2));
+            menu.Location = new Point(Math.Max(Px(10), width - menu.Width - Px(10)), Math.Max(0, (panel.Height - menu.Height) / 2));
+            thumb.Location = new Point(Px(14), Math.Max(0, (panel.Height - thumb.Height) / 2));
 
-            var statusX = Math.Max(150, Math.Min(width / 2, width - 260));
-            name.Width = Math.Max(80, statusX - 30);
-            sub.Width = Math.Max(80, statusX - 34);
+            var statusX = Math.Max(Px(180), Math.Min(width / 2 + Px(30), width - Px(260)));
+            name.Width = Math.Max(Px(80), statusX - Px(78));
+            sub.Width = Math.Max(Px(80), statusX - Px(82));
             status.Bounds = new Rectangle(
                 statusX,
                 Math.Max(0, (panel.Height - statusHeight) / 2),
-                Math.Max(80, menu.Left - statusX - 10),
+                Math.Max(Px(80), menu.Left - statusX - Px(10)),
                 statusHeight);
         }
 
         panel.Resize += (_, _) => LayoutRow();
         LayoutRow();
 
-        _rows[item.Config.Url] = new ItemRow(name, sub, status, panel, menu);
+        if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+            LoadThumbnailAsync(thumb, item.ImageUrl!);
+
+        _rows[item.Config.Url] = new ItemRow(name, sub, status, panel, menu, thumb);
         return panel;
     }
 
@@ -1022,6 +1083,29 @@ public sealed class MainForm : Form
         foreach (Control control in _itemsPanel.Controls)
             sb.AppendLine($"{control.GetType().Name} w={control.Width} left={control.Left} margin={control.Margin.Left},{control.Margin.Right}");
         return sb.ToString();
+    }
+
+    private async void LoadThumbnailAsync(PictureBox box, string url)
+    {
+        try
+        {
+            if (_thumbCache.TryGetValue(url, out var cached))
+            {
+                if (!box.IsDisposed) box.Image = cached;
+                return;
+            }
+
+            var bytes = await ThumbHttp.GetByteArrayAsync(url);
+            using var stream = new MemoryStream(bytes);
+            var image = Image.FromStream(stream);
+            _thumbCache[url] = image;
+
+            if (!box.IsDisposed) box.Image = image;
+        }
+        catch
+        {
+            // sin miniatura
+        }
     }
 
     private void ReflowRows()
@@ -1057,6 +1141,9 @@ public sealed class MainForm : Form
             row.Status.ForeColor = item.LastError is not null
                 ? Palette.Amber
                 : item.StatusColor;
+
+            if (!string.IsNullOrWhiteSpace(item.ImageUrl) && row.Thumb.Image is null)
+                LoadThumbnailAsync(row.Thumb, item.ImageUrl!);
         }
 
         if (InvokeRequired) BeginInvoke(new Action(Apply));
@@ -1403,6 +1490,9 @@ public sealed class MainForm : Form
                 item.ApiStoreId = resolved.StoreId;
                 item.ApiProductId = resolved.ProductId;
                 item.ApiColorId = resolved.ColorId;
+
+                if (string.IsNullOrWhiteSpace(item.ImageUrl) && !string.IsNullOrWhiteSpace(resolved.Image))
+                    item.ImageUrl = resolved.Image;
 
                 if (item.Sizes.Length > 0)
                 {
@@ -1796,6 +1886,18 @@ public sealed class MainForm : Form
         void Apply() => _foot.Text = text;
         if (InvokeRequired) BeginInvoke(new Action(Apply));
         else Apply();
+
+        var available = _items.Count(i => i.Available);
+        var tip = $"Inditex · {_items.Count} producto(s) · {available} disponible(s)";
+        if (tip.Length > 63) tip = tip[..63];
+        try
+        {
+            _tray.Text = tip;
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     private void AppendHistory(MonitorItem item)
@@ -1883,7 +1985,7 @@ public sealed class MainForm : Form
         else Apply();
     }
 
-    private sealed record ItemRow(Label Name, Label Sub, Label Status, Panel Panel, Button Menu);
+    private sealed record ItemRow(Label Name, Label Sub, Label Status, Panel Panel, Button Menu, PictureBox Thumb);
 
     private enum LogKind
     {
