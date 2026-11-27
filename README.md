@@ -49,7 +49,7 @@ Portable: `config.json`, `logs/` and the internal Edge profile are stored **next
 ## Features
 
 - Add any Inditex product by URL; the app reads the **real sizes** (M, L, 44, Única…) and lets you pick which ones to watch.
-- Several URLs at once = several colours of the same product.
+- Several URLs at once (one row per colour of the same product).
 - **API mode**: after the first load it polls the site's JSON (faster, fewer requests, works even when the page blocks headless).
 - **Price and colour** from that API.
 - 15 s minimum interval with a **lock**: unlocking it below 15 s shows a red warning about the risks.
@@ -198,7 +198,7 @@ Portable: `config.json`, `logs/` y el perfil interno de Edge se guardan **junto 
 ## Qué hace
 
 - Añades cualquier producto de Inditex por URL; la app lee las **tallas reales** (M, L, 44, Única…) y te deja elegir cuáles vigilar.
-- Varias URLs a la vez = varios colores del mismo producto.
+- Varias URLs a la vez (una fila por color del mismo producto).
 - **Modo API**: tras la primera carga consulta el JSON de la web (más rápido, menos peticiones y funciona aunque la página bloquee el headless).
 - **Precio y color** desde esa API.
 - Intervalo mínimo de 15 s con **candado**: si lo desbloqueas por debajo de 15 s sale un aviso rojo con los riesgos.
