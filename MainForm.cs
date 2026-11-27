@@ -476,7 +476,7 @@ public sealed class MainForm : Form
         return end < start ? now >= start || now < end : now >= start && now < end;
     }
 
-    private void OpenSettings()
+    private async void OpenSettings()
     {
         using var dialog = new SettingsDialog(_config, File.Exists(StartupShortcutPath));
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
@@ -1799,6 +1799,39 @@ public sealed class MainForm : Form
 
         if (InvokeRequired) BeginInvoke(new Action(Ui));
         else Ui();
+    }
+
+    private async Task ClearCacheAsync()
+    {
+        var wasRunning = _cts is not null;
+        if (wasRunning) await StopMonitorAsync();
+
+        try { _edge?.KillBrowser(); } catch { }
+        _edge = null;
+
+        var path = Path.Combine(AppPaths.DataDir, "edge-profile");
+        var deleted = false;
+
+        for (var attempt = 0; attempt < 6; attempt++)
+        {
+            try
+            {
+                if (Directory.Exists(path)) Directory.Delete(path, true);
+                deleted = !Directory.Exists(path);
+                if (deleted) break;
+            }
+            catch
+            {
+                // archivos en uso: reintentamos
+            }
+
+            await Task.Delay(500);
+        }
+
+        Log(deleted ? "Caché del navegador borrada." : "No pude borrar toda la caché (archivos en uso).",
+            deleted ? LogKind.Ok : LogKind.Warn);
+
+        if (wasRunning) await StartMonitorAsync();
     }
 
     private void PositionAlert(Form form)

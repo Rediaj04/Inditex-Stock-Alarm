@@ -127,6 +127,7 @@ public sealed class EdgeCdp
             .Append(" --disable-features=msEdgeFirstRunExperience,msEdgeSidebarV2")
             .Append(" --disable-backgrounding-occluded-windows")
             .Append(" --disable-renderer-backgrounding")
+            .Append(" --disk-cache-size=157286400 --media-cache-size=52428800")
             .Append(" --start-maximized")
             .Append(' ').Append(extraArgs ?? "")
             .Append(" --new-window \"").Append(startUrl).Append('"')

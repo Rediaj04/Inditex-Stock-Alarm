@@ -18,6 +18,7 @@ public sealed class SettingsDialog : Form
     private readonly CheckBox _startMinimized;
     private readonly ComboBox _scale;
     private readonly ComboBox _language;
+    private readonly Label _cacheLabel;
     private readonly Button _customButton;
     private readonly Label _customLabel;
     private string _customPath = "";
@@ -36,6 +37,7 @@ public sealed class SettingsDialog : Form
     public int UiScale => _scale.SelectedIndex == 2 ? 150 : _scale.SelectedIndex == 1 ? 125 : 100;
     public string CustomSoundPath => _customPath;
     public string Language => _language.SelectedIndex == 1 ? "en" : "es";
+    public bool ClearCacheRequested { get; private set; }
 
     public SettingsDialog(AppConfig config, bool startWithWindows = false)
     {
@@ -315,6 +317,30 @@ public sealed class SettingsDialog : Form
         };
         Controls.Add(_startMinimized);
 
+        _cacheLabel = new Label
+        {
+            Text = Loc.T("Caché del navegador: ", "Browser cache: ") + CacheSizeText(),
+            AutoSize = true,
+            ForeColor = Color.FromArgb(138, 147, 168),
+            Location = new Point(30, y + 74)
+        };
+        Controls.Add(_cacheLabel);
+
+        var clearCache = new Button
+        {
+            Text = Loc.T("Limpiar caché", "Clear cache"),
+            Location = new Point(260, y + 68),
+            Size = new Size(130, 28),
+            BackColor = Color.FromArgb(30, 34, 44),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
+        };
+        clearCache.FlatAppearance.BorderSize = 1;
+        clearCache.FlatAppearance.BorderColor = Color.FromArgb(60, 66, 80);
+        clearCache.Click += (_, _) => RequestClearCache();
+        Controls.Add(clearCache);
+
         var ok = new Button
         {
             Text = "Guardar",
@@ -373,6 +399,36 @@ public sealed class SettingsDialog : Form
         BorderStyle = BorderStyle.FixedSingle,
         Font = new Font("Consolas", 10f)
     };
+
+    private static string CacheSizeText()
+    {
+        try
+        {
+            var dir = Path.Combine(AppPaths.DataDir, "edge-profile");
+            if (!Directory.Exists(dir)) return "0 MB";
+            var bytes = new DirectoryInfo(dir)
+                .EnumerateFiles("*", SearchOption.AllDirectories)
+                .Sum(f => f.Length);
+            return Math.Round(bytes / 1024.0 / 1024.0, 1) + " MB";
+        }
+        catch
+        {
+            return "? MB";
+        }
+    }
+
+    private void RequestClearCache()
+    {
+        var result = MessageBox.Show(this,
+            Loc.T("Se cerrará el navegador oculto y se borrará su caché. Se recrea solo al reiniciar la vigilancia. Tus productos y ajustes no se tocan. ¿Continuar?",
+                  "The hidden browser will be closed and its cache deleted. It is recreated when monitoring restarts. Your products and settings are not touched. Continue?"),
+            Loc.T("Limpiar caché", "Clear cache"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+        if (result != DialogResult.Yes) return;
+
+        ClearCacheRequested = true;
+        DialogResult = DialogResult.OK;
+    }
 
     private void PickCustomSound()
     {
