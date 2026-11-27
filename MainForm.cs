@@ -739,8 +739,8 @@ public sealed class MainForm : Form
 
     internal async Task<SizeProbeResult> ProbeSizesAsync(string url)
     {
-        var edgePath = EdgeCdp.FindEdge()
-                       ?? throw new InvalidOperationException("No encuentro msedge.exe en este PC.");
+        var edgePath = EdgeCdp.FindBrowser()
+                       ?? throw new InvalidOperationException("No encuentro Edge, Chrome ni Brave en este PC.");
 
         _edge ??= new EdgeCdp(edgePath, Path.Combine(AppPaths.DataDir, "edge-profile"));
         return await SizeProbeService.ProbeAsync(_edge, url);
@@ -776,8 +776,8 @@ public sealed class MainForm : Form
     {
         if (_edge is null)
         {
-            var edgePath = EdgeCdp.FindEdge()
-                           ?? throw new InvalidOperationException("No encuentro msedge.exe en este PC.");
+            var edgePath = EdgeCdp.FindBrowser()
+                           ?? throw new InvalidOperationException("No encuentro Edge, Chrome ni Brave en este PC.");
             _edge = new EdgeCdp(edgePath, Path.Combine(AppPaths.DataDir, "edge-profile"));
             await _edge.StartAsync(item.Config.Url, ct, HeadlessArgs);
         }
@@ -1088,12 +1088,12 @@ public sealed class MainForm : Form
 
         try
         {
-            var edgePath = EdgeCdp.FindEdge()
-                           ?? throw new InvalidOperationException("No encuentro msedge.exe en este PC.");
+            var edgePath = EdgeCdp.FindBrowser()
+                           ?? throw new InvalidOperationException("No encuentro Edge, Chrome ni Brave en este PC.");
 
             _edge ??= new EdgeCdp(edgePath, Path.Combine(AppPaths.DataDir, "edge-profile"));
             await _edge.StartAsync(_items[0].Config.Url, ct, HeadlessArgs);
-            Log("Edge conectado en segundo plano.", LogKind.Ok);
+            Log($"Navegador conectado en segundo plano ({_edge?.Name ?? "navegador"}).", LogKind.Ok);
 
             NativeMethods.KeepAwake(true);
             _loop = LoopAsync(ct);
@@ -1122,7 +1122,7 @@ public sealed class MainForm : Form
     {
         try
         {
-            Log("Watchdog: reiniciando Edge y pestañas…", LogKind.Warn);
+            Log("Watchdog: reiniciando el navegador y las pestañas…", LogKind.Warn);
 
             foreach (var item in _items)
             {
@@ -1142,17 +1142,17 @@ public sealed class MainForm : Form
             _edge?.KillBrowser();
             _edge = null;
 
-            var edgePath = EdgeCdp.FindEdge();
+            var edgePath = EdgeCdp.FindBrowser();
             var first = _items.FirstOrDefault(i => !i.Paused) ?? _items.FirstOrDefault();
             if (edgePath is null || first is null) return;
 
             _edge = new EdgeCdp(edgePath, Path.Combine(AppPaths.DataDir, "edge-profile"));
             await _edge.StartAsync(first.Config.Url, ct, HeadlessArgs);
-            Log("Watchdog: Edge reiniciado.", LogKind.Ok);
+            Log("Watchdog: navegador reiniciado.", LogKind.Ok);
         }
         catch (Exception ex)
         {
-            Log("Watchdog: no pude reiniciar Edge: " + ex.Message, LogKind.Error);
+            Log("Watchdog: no pude reiniciar el navegador: " + ex.Message, LogKind.Error);
         }
     }
 
@@ -1278,7 +1278,7 @@ public sealed class MainForm : Form
                 if (_failStreak == 3)
                     await RecoverBrowserAsync(ct);
                 if (_failStreak == 20)
-                    Log("⚠ 20 fallos seguidos: revisa que Edge siga abierto y sin bloqueos.", LogKind.Warn);
+                    Log("⚠ 20 fallos seguidos: revisa que el navegador siga abierto y sin bloqueos.", LogKind.Warn);
             }
 
             var elapsed = (DateTime.UtcNow - started).TotalSeconds;
@@ -1757,7 +1757,7 @@ public sealed class MainForm : Form
         var update = _updateTag is null ? "" : $" · NUEVA v{_updateTag}";
         var text = $"v{version}{update} · PC sin suspensión · última comprobación {last} · cada {EffectiveInterval} s (mín. {(_allowFast ? 5 : 15)} s) · " +
                    $"{_items.Count} producto(s) · comprobaciones {_checks} · fallos {_failStreak} · " +
-                   $"sonido {(_soundEnabled ? "on" : "off")} · Brave {(FindBrave() is null ? "no" : "ok")} · Edge {(_edge is null ? "—" : "ok")}";
+                   $"sonido {(_soundEnabled ? "on" : "off")} · Brave {(FindBrave() is null ? "no" : "ok")} · navegador {(_edge is null ? "—" : (_edge.Name))}";
 
         void Apply() => _foot.Text = text;
         if (InvokeRequired) BeginInvoke(new Action(Apply));

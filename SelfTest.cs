@@ -12,7 +12,7 @@ internal static class SelfTest
         try
         {
             var headless = args.Any(a => a.Equals("--headless", StringComparison.OrdinalIgnoreCase));
-            var edge = EdgeCdp.FindEdge() ?? throw new Exception("msedge.exe no encontrado");
+            var edge = EdgeCdp.FindBrowser() ?? throw new Exception("navegador no encontrado");
             var profile = Path.Combine(Path.GetTempPath(), "bsk-selftest-profile");
             cdp = new EdgeCdp(edge, profile, 9444);
 

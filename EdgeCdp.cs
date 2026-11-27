@@ -24,24 +24,61 @@ public sealed class EdgeCdp
         _edgePath = edgePath;
         _profileDir = profileDir;
         _port = port;
+        Name = BrowserName(edgePath);
     }
+
+    public string Name { get; }
 
     public string BaseUrl => $"http://127.0.0.1:{_port}";
 
-    public static string? FindEdge()
+    public static string? FindBrowser()
     {
         var candidates = new[]
         {
+            // Edge
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
                 "Microsoft", "Edge", "Application", "msedge.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                 "Microsoft", "Edge", "Application", "msedge.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Microsoft", "Edge", "Application", "msedge.exe")
+                "Microsoft", "Edge", "Application", "msedge.exe"),
+            // Chrome
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "Google", "Chrome", "Application", "chrome.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                "Google", "Chrome", "Application", "chrome.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Google", "Chrome", "Application", "chrome.exe"),
+            // Brave
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "BraveSoftware", "Brave-Browser", "Application", "brave.exe")
         };
 
-        var found = candidates.FirstOrDefault(File.Exists);
-        return found ?? FromAppPaths("msedge.exe");
+        foreach (var candidate in candidates)
+        {
+            if (File.Exists(candidate)) return candidate;
+        }
+
+        foreach (var exe in new[] { "msedge.exe", "chrome.exe", "brave.exe" })
+        {
+            var found = FromAppPaths(exe);
+            if (found is not null) return found;
+        }
+
+        return null;
+    }
+
+    public static string BrowserName(string path)
+    {
+        var name = Path.GetFileName(path).ToLowerInvariant();
+        if (name.Contains("edge")) return "Edge";
+        if (name.Contains("chrome")) return "Chrome";
+        if (name.Contains("brave")) return "Brave";
+        return "navegador";
     }
 
     private static string? FromAppPaths(string exeName)
@@ -108,7 +145,7 @@ public sealed class EdgeCdp
         }
 
         throw new InvalidOperationException(
-            "Edge no ha abierto el puerto de depuración. Prueba a cerrar las ventanas de Edge de este perfil o revisa el antivirus.");
+            "El navegador no ha abierto el puerto de depuración. Prueba a cerrar las ventanas de Edge de este perfil o revisa el antivirus.");
     }
 
     private async Task<List<TargetInfo>> GetTargetsAsync(CancellationToken ct)

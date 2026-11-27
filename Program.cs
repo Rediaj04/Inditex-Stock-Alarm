@@ -10,10 +10,10 @@ static class Program
         var probeArg = args.FirstOrDefault(a => a.StartsWith("--probe=", StringComparison.OrdinalIgnoreCase));
         if (probeArg is not null)
         {
-            var edgePath = EdgeCdp.FindEdge();
+            var edgePath = EdgeCdp.FindBrowser();
             if (edgePath is null)
             {
-                File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "probe.txt"), "no edge");
+                File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "probe.txt"), "no browser");
                 return 1;
             }
 
