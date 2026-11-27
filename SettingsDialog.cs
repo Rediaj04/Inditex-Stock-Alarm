@@ -267,7 +267,8 @@ public sealed class SettingsDialog : Form
 
     private void TryAccept()
     {
-        if (!TimeSpan.TryParse(_start.Text, out _) || !TimeSpan.TryParse(_end.Text, out _))
+        if (_schedule.Checked &&
+            (!TimeSpan.TryParse(_start.Text, out _) || !TimeSpan.TryParse(_end.Text, out _)))
         {
             MessageBox.Show(this, "El horario debe tener formato HH:mm (por ejemplo 08:00 y 24:00).",
                 "Horario no válido", MessageBoxButtons.OK, MessageBoxIcon.Warning);

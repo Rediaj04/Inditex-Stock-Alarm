@@ -44,6 +44,7 @@ public sealed class MainForm : Form
     private Button _btnSound = null!;
     private Button _btnLock = null!;
     private Button _btnStartup = null!;
+    private Button _btnSnooze = null!;
     private NumericUpDown _num = null!;
     private RichTextBox _log = null!;
     private FlowLayoutPanel _itemsPanel = null!;
@@ -95,6 +96,7 @@ public sealed class MainForm : Form
         _snoozeTimer.Tick += (_, _) =>
         {
             _snoozeTimer.Stop();
+            _btnSnooze.Text = "Snooze 30m";
             if (_cts is not null) SetPill("● VIGILANDO", Palette.Green, Palette.GreenBg);
             Log("Snooze terminado: vuelven los avisos.", LogKind.Info);
         };
@@ -353,8 +355,8 @@ public sealed class MainForm : Form
         var btnSettings = MakeButton("⚙ Ajustes", Palette.Chip, Palette.Text, 106);
         btnSettings.Click += (_, _) => OpenSettings();
 
-        var btnSnooze = MakeButton("Snooze 30m", Palette.Chip, Palette.Text, 118);
-        btnSnooze.Click += (_, _) => Snooze();
+        _btnSnooze = MakeButton("Snooze 30m", Palette.Chip, Palette.Text, 118);
+        _btnSnooze.Click += (_, _) => Snooze();
 
         _btnSilence = MakeButton("Silenciar", Palette.Red, Color.White, 105);
         _btnSilence.Enabled = false;
@@ -373,7 +375,7 @@ public sealed class MainForm : Form
             Margin = new Padding(10, 16, 0, 0)
         };
 
-        bar.Controls.AddRange(new Control[] { _btnToggle, _num, lblSeg, _btnLock, _btnSound, btnTest, btnBrave, btnSettings, btnSnooze, _btnSilence, hint });
+        bar.Controls.AddRange(new Control[] { _btnToggle, _num, lblSeg, _btnLock, _btnSound, btnTest, btnBrave, btnSettings, _btnSnooze, _btnSilence, hint });
         return bar;
     }
 
@@ -814,11 +816,22 @@ public sealed class MainForm : Form
 
     private void Snooze()
     {
+        if (_snoozeUntilTicks > DateTime.UtcNow.Ticks)
+        {
+            _snoozeUntilTicks = 0;
+            _snoozeTimer.Stop();
+            _btnSnooze.Text = "Snooze 30m";
+            if (_cts is not null) SetPill("● VIGILANDO", Palette.Green, Palette.GreenBg);
+            Log("Snooze cancelado: vuelven los avisos.", LogKind.Info);
+            return;
+        }
+
         _snoozeUntilTicks = DateTime.UtcNow.AddMinutes(30).Ticks;
         _alarm.Silence();
         _btnSilence.Enabled = false;
+        _btnSnooze.Text = "Quitar snooze";
         if (_cts is not null) SetPill("● SNOOZE 30 MIN", Palette.Amber, Palette.AmberBg);
-        Log("Avisos silenciados 30 minutos (la vigilancia sigue).", LogKind.Warn);
+        Log($"Avisos silenciados hasta las {DateTime.Now.AddMinutes(30):HH:mm} (la vigilancia sigue).", LogKind.Warn);
         _snoozeTimer.Stop();
         _snoozeTimer.Start();
     }
@@ -1498,7 +1511,8 @@ public sealed class MainForm : Form
     {
         if (DateTime.UtcNow.Ticks < _snoozeUntilTicks)
         {
-            Log($"Aviso omitido (snooze): {item.DisplayName}", LogKind.Check);
+            var until = new DateTime(_snoozeUntilTicks, DateTimeKind.Utc).ToLocalTime();
+            Log($"Aviso omitido: snooze activo hasta {until:HH:mm} ({item.DisplayName})", LogKind.Check);
             return;
         }
 
@@ -1594,9 +1608,20 @@ public sealed class MainForm : Form
             return;
         }
 
-        _focusBrave.Stop();
-        _focusBrave.Start();
-        Log("Aviso confirmado: pestaña en Brave lista. ¡Suerte!", LogKind.Ok);
+        var urls = (sender as AlertForm)?.Urls ?? Array.Empty<string>();
+        if (urls.Count > 0)
+        {
+            foreach (var url in urls.Distinct(StringComparer.OrdinalIgnoreCase))
+                OpenInBrave(url);
+
+            Log("Aviso confirmado: abriendo la ficha en Brave. ¡Suerte!", LogKind.Ok);
+        }
+        else
+        {
+            _focusBrave.Stop();
+            _focusBrave.Start();
+            Log("Aviso confirmado. ¡Suerte!", LogKind.Ok);
+        }
     }
 
     private void TestAlert()
