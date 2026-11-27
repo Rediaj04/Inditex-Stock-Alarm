@@ -55,11 +55,11 @@ Portable: `config.json`, `logs/` and the internal Edge profile are stored **next
 - 15 s minimum interval with a **lock**: unlocking it below 15 s shows a red warning about the risks.
 - **Backoff** on failures (30→60→120→180 s) and a **watchdog** that restarts Edge if it dies.
 - **Only-alarm popup** with a big OK button; the siren keeps playing until you press it.
-- **Snooze 30 min**, **pause per product**, and “already bought → pause this product”.
-- **Settings**: sound mode (siren+voice / siren / voice / beep), ntfy push with a test button, schedule (e.g. 08:00–24:00), gentle mode (min 45 s) and dark/light theme.
+- **Snooze 30 min** (the same button cancels it), **pause per product**, and “already bought → pause this product”.
+- **Settings**: sound mode (siren+voice / siren / voice / beep), ntfy push with a test button, schedule (e.g. 08:00–24:00), gentle mode (min 45 s), **start with Windows** and dark/light theme.
 - Prevents Windows from sleeping while watching.
 - Optional **update notice** (not forced) when a newer GitHub Release exists.
-- Live log and daily log files; `logs\historial.csv` with every stock change.
+- Live log with a **clear** button (does not delete files) and daily log files; `logs\historial.csv` with every stock change.
 
 ![Alert](docs/alerta.png)
 
@@ -68,7 +68,7 @@ Portable: `config.json`, `logs/` and the internal Edge profile are stored **next
 1. Press **＋ Añadir producto**, paste one URL per line (several = several colours).
 2. Press **Buscar tallas**: the app opens the page in a hidden Edge and lists the real sizes with their state.
 3. Tick the sizes you want (available ones are pre-ticked). If the site cannot be read, type them by hand (`44`, `M,L`, `Única`).
-4. Press **INICIAR** (it also starts on launch). Minimise to the tray if you want.
+4. Press **INICIAR** (it also starts on launch). Minimise to the tray if you want.\n5. Per product, the **⋯** menu lets you check now, edit sizes/name, pause or delete.
 
 Small windows are supported: buttons wrap and rows are never clipped.
 
@@ -204,11 +204,11 @@ Portable: `config.json`, `logs/` y el perfil interno de Edge se guardan **junto 
 - Intervalo mínimo de 15 s con **candado**: si lo desbloqueas por debajo de 15 s sale un aviso rojo con los riesgos.
 - **Backoff** ante fallos (30→60→120→180 s) y **watchdog** que reinicia Edge si se cae.
 - **Ventana de aviso** con botón grande; la sirena no para hasta que lo pulsas.
-- **Snooze 30 min**, **pausar por producto** y “ya he comprado → pausar este producto”.
-- **Ajustes**: modo de sonido (sirena+voz / sirena / voz / pitido), ntfy con botón de prueba, horario (p. ej. 08:00–24:00), modo suave (mín. 45 s) y tema oscuro/claro.
+- **Snooze 30 min** (el mismo botón lo cancela), **pausar por producto** y “ya he comprado → pausar este producto”.
+- **Ajustes**: modo de sonido (sirena+voz / sirena / voz / pitido), ntfy con botón de prueba, horario (p. ej. 08:00–24:00), modo suave (mín. 45 s), **inicio con Windows** y tema oscuro/claro.
 - Impide que Windows entre en suspensión mientras vigila.
 - **Aviso de actualización** opcional (no obligatorio) si hay un Release nuevo.
-- Registro en vivo, logs diarios y `logs\historial.csv` con cada cambio de stock.
+- Registro en vivo con botón **limpiar** (no borra archivos), logs diarios y `logs\historial.csv` con cada cambio de stock.
 
 ![Ventana de aviso](docs/alerta.png)
 
@@ -217,7 +217,7 @@ Portable: `config.json`, `logs/` y el perfil interno de Edge se guardan **junto 
 1. Pulsa **＋ Añadir producto** y pega una URL por línea (varias = varios colores).
 2. Pulsa **Buscar tallas**: la app abre la ficha en un Edge oculto y lista las tallas reales con su estado.
 3. Marca las que quieras (las disponibles vienen marcadas). Si la web no se deja leer, escríbelas a mano (`44`, `M,L`, `Única`).
-4. Pulsa **INICIAR** (también arranca al abrir). Minimiza a la bandeja si quieres.
+4. Pulsa **INICIAR** (también arranca al abrir). Minimiza a la bandeja si quieres.\n5. En cada producto, el menú **⋯** te deja comprobar ahora, editar tallas/nombre, pausar o eliminar.
 
 La ventana se adapta a tamaños pequeños: los botones se envuelven y las filas no se recortan.
 
