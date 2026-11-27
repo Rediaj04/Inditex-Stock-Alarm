@@ -57,7 +57,6 @@ Portable: `config.json`, `logs/` and the internal browser profile are stored **n
 - **Only-alarm popup** with a big OK button; the siren keeps playing until you press it.
 - **Snooze 30 min** (the same button cancels it), **pause per product**, and “already bought → pause this product”.
 - **Settings**: sound mode, ntfy push with a test button, schedule, gentle mode, **start with Windows**, **start minimised**, **alert screen**, **UI scale (100/125/150 %)** and dark/light theme.
-- **Keyboard shortcuts**: Space start/stop, M sound, S snooze, T test, L clear log.
 - Tray tooltip with the current status. Prevents Windows from sleeping while watching.
 - Optional **update notice** (not forced) when a newer GitHub Release exists.
 - Live log with a **clear** button (does not delete files) and daily log files; `logs\historial.csv` with every stock change.
@@ -129,6 +128,24 @@ dotnet test tests/InditexStockAlarm.Tests/InditexStockAlarm.Tests.csproj -c Rele
 ```
 
 Covers URL parsing (Bershka, Zara, Pull&Bear), sizes (`44`, `M,L`), name guessing and config save/load. CI runs them on every push. A scheduled workflow (`probe.yml`) checks real product pages weekly to detect site changes.
+
+## Troubleshooting
+
+- **Row shows ERROR / `api-…`**: make sure Edge, Chrome or Brave is installed, wait a few seconds and press “Comprobar ahora” again. If it persists, the site may be blocking requests; the log shows the exact reason.
+- **No sound**: check that `Sonido` is ON, the Windows volume and the output device. Use `Probar` to test it.
+- **Alert on the wrong monitor**: Settings → `Pantalla de la alerta`.
+- **The folder grows a lot**: it is the hidden browser cache (`edge-profile`). Close the app and delete that folder to reset it; it is recreated on the next run.
+- **First check is slow**: the browser profile is being created; later checks go straight to the API and are much faster.
+
+## Updating
+
+Download the new `InditexStockAlarm.exe` from Releases and replace the old one; `config.json` and `logs/` are kept. To move the app to another PC, copy the exe and `config.json`.
+
+## Privacy
+
+- No account, no telemetry, no analytics.
+- `config.json`, `logs/` and the browser profile stay on your PC.
+- Only if you set an `ntfyTopic`, the app sends the product name, size state and URL to ntfy.sh.
 
 ## Build
 
@@ -212,7 +229,6 @@ Portable: `config.json`, `logs/` y el perfil interno del navegador se guardan **
 - **Ventana de aviso** con botón grande; la sirena no para hasta que lo pulsas.
 - **Snooze 30 min** (el mismo botón lo cancela), **pausar por producto** y “ya he comprado → pausar este producto”.
 - **Ajustes**: modo de sonido, ntfy con botón de prueba, horario, modo suave, **inicio con Windows**, **arrancar minimizada**, **pantalla de la alerta**, **escala de interfaz (100/125/150 %)** y tema oscuro/claro.
-- **Atajos de teclado**: Espacio iniciar/parar, M sonido, S snooze, T probar, L limpiar registro.
 - Tooltip en la bandeja con el estado actual. Impide que Windows entre en suspensión mientras vigila.
 - **Aviso de actualización** opcional (no obligatorio) si hay un Release nuevo.
 - Registro en vivo con botón **limpiar** (no borra archivos), logs diarios y `logs\historial.csv` con cada cambio de stock.
@@ -284,6 +300,24 @@ dotnet test tests/InditexStockAlarm.Tests/InditexStockAlarm.Tests.csproj -c Rele
 ```
 
 Cubren el parseo de URLs (Bershka, Zara, Pull&Bear), tallas (`44`, `M,L`), nombres deducidos y guardado/carga de `config.json`. El CI las ejecuta en cada push. Un workflow programado (`probe.yml`) comprueba fichas reales cada semana para detectar cambios de las webs.
+
+## Problemas frecuentes
+
+- **La fila muestra ERROR / `api-…`**: comprueba que Edge, Chrome o Brave está instalado, espera unos segundos y pulsa “Comprobar ahora”. Si sigue, la web puede estar bloqueando peticiones; el log dice el motivo exacto.
+- **No suena**: revisa que `Sonido` esté ON, el volumen de Windows y el dispositivo de salida. Usa `Probar` para comprobarlo.
+- **La alerta sale en otro monitor**: Ajustes → `Pantalla de la alerta`.
+- **La carpeta crece mucho**: es la caché del navegador oculto (`edge-profile`). Cierra la app y borra esa carpeta para reiniciarla; se recrea sola.
+- **La primera comprobación tarda**: se está creando el perfil del navegador; las siguientes van directas a la API y son mucho más rápidas.
+
+## Actualizar
+
+Descarga el nuevo `InditexStockAlarm.exe` desde Releases y reemplaza el anterior; `config.json` y `logs/` se conservan. Para llevar la app a otro PC, copia el exe y `config.json`.
+
+## Privacidad
+
+- Sin cuenta, sin telemetría y sin analíticas.
+- `config.json`, `logs/` y el perfil del navegador se quedan en tu PC.
+- Solo si rellenas `ntfyTopic`, la app envía el nombre del producto, el estado de la talla y la URL a ntfy.sh.
 
 ## Compilar
 

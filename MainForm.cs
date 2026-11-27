@@ -110,40 +110,6 @@ public sealed class MainForm : Form
         Shown += OnShown;
     }
 
-    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
-    {
-        var editing = ActiveControl is TextBoxBase || ActiveControl is NumericUpDown || ActiveControl is ComboBox;
-
-        if (!editing)
-        {
-            switch (keyData)
-            {
-                case Keys.Space:
-                    _ = (_cts is null ? StartMonitorAsync() : StopMonitorAsync());
-                    return true;
-                case Keys.M:
-                    _soundEnabled = !_soundEnabled;
-                    ApplySoundState();
-                    _config.SoundEnabled = _soundEnabled;
-                    _config.Save(AppPaths.DataDir);
-                    if (!_soundEnabled) _alarm.Silence();
-                    Log(_soundEnabled ? "Sonido activado." : "Sonido silenciado.", LogKind.Info);
-                    return true;
-                case Keys.S:
-                    Snooze();
-                    return true;
-                case Keys.T:
-                    TestAlert();
-                    return true;
-                case Keys.L:
-                    _log.Clear();
-                    return true;
-            }
-        }
-
-        return base.ProcessCmdKey(ref msg, keyData);
-    }
-
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
@@ -561,23 +527,25 @@ public sealed class MainForm : Form
             Padding = new Padding(18, 2, 18, 6)
         };
 
-        var head = new Panel { Dock = DockStyle.Top, Height = 30, BackColor = Palette.Bg };
+        var head = new Panel { Dock = DockStyle.Top, Height = 40, BackColor = Palette.Bg };
         head.Controls.Add(new Label
         {
             Text = "PRODUCTOS VIGILADOS",
             Font = new Font("Segoe UI Semibold", 8.5f),
             ForeColor = Palette.Muted,
             AutoSize = true,
-            Location = new Point(0, 7)
+            Location = new Point(0, 13)
         });
 
-        var add = MakeButton("＋ Añadir producto", Palette.Chip, Palette.Text, 170);
-        add.Height = 26;
+        var add = MakeButton("＋ Añadir producto", Palette.Card, Palette.Text, 170);
+        add.Height = 28;
         add.Font = new Font("Segoe UI Semibold", 9f);
+        add.FlatAppearance.BorderSize = 1;
+        add.FlatAppearance.BorderColor = Palette.CardBorder;
         add.Click += (_, _) => AddItem();
         head.Controls.Add(add);
 
-        head.Resize += (_, _) => add.Location = new Point(head.ClientSize.Width - add.Width, 0);
+        head.Resize += (_, _) => add.Location = new Point(head.ClientSize.Width - add.Width - 4, 6);
 
         _itemsPanel = new FlowLayoutPanel
         {
