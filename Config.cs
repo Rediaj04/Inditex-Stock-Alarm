@@ -16,6 +16,7 @@ public sealed class AppConfig
     public string ScheduleStart { get; set; } = "08:00";
     public string ScheduleEnd { get; set; } = "24:00";
     public string Theme { get; set; } = "dark";
+    public int AlertScreen { get; set; } = -1;
     public List<ItemConfig> Items { get; set; } = new();
 
     private static readonly JsonSerializerOptions WriteOpts = new()

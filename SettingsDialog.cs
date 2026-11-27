@@ -13,6 +13,7 @@ public sealed class SettingsDialog : Form
     private readonly TextBox _end;
     private readonly CheckBox _gentle;
     private readonly ComboBox _theme;
+    private readonly ComboBox _screen;
     private readonly CheckBox _startup;
 
     public string SoundMode => SoundValues[Math.Max(0, _sound.SelectedIndex)];
@@ -22,6 +23,7 @@ public sealed class SettingsDialog : Form
     public string ScheduleEnd => _end.Text.Trim();
     public bool GentleMode => _gentle.Checked;
     public string Theme => _theme.SelectedIndex == 1 ? "light" : "dark";
+    public int AlertScreen => _screen.SelectedIndex <= 0 ? -1 : _screen.SelectedIndex - 1;
     public bool ThemeChanged => !string.Equals(Theme, _originalTheme, StringComparison.OrdinalIgnoreCase);
     public bool StartWithWindows => _startup.Checked;
 
@@ -30,7 +32,7 @@ public sealed class SettingsDialog : Form
         _originalTheme = config.Theme;
 
         Text = "Ajustes";
-        ClientSize = new Size(700, 500);
+        ClientSize = new Size(700, 570);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -171,6 +173,41 @@ public sealed class SettingsDialog : Form
             Location = new Point(224, y + 4)
         });
 
+        y += 36;
+
+        Controls.Add(Header("Pantalla de la alerta", ref y));
+
+        _screen = new ComboBox
+        {
+            Location = new Point(30, y),
+            Width = 320,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = Color.FromArgb(30, 34, 44),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat
+        };
+        _screen.Items.Add("Predeterminada");
+
+        var screens = Screen.AllScreens;
+        for (var i = 0; i < screens.Length; i++)
+        {
+            var s = screens[i];
+            _screen.Items.Add($"Pantalla {i + 1} ({s.Bounds.Width}×{s.Bounds.Height})");
+        }
+
+        _screen.SelectedIndex = config.AlertScreen >= 0 && config.AlertScreen < screens.Length
+            ? config.AlertScreen + 1
+            : 0;
+
+        Controls.Add(_screen);
+        Controls.Add(new Label
+        {
+            Text = "La ventana de aviso saldrá centrada en esa pantalla.",
+            AutoSize = true,
+            ForeColor = Color.FromArgb(138, 147, 168),
+            Location = new Point(360, y + 4)
+        });
+
         _startup = new CheckBox
         {
             Text = "Iniciar con Windows",
@@ -184,7 +221,7 @@ public sealed class SettingsDialog : Form
         var ok = new Button
         {
             Text = "Guardar",
-            Location = new Point(470, 434),
+            Location = new Point(470, 504),
             Size = new Size(200, 44),
             BackColor = Color.FromArgb(64, 214, 128),
             ForeColor = Color.FromArgb(8, 28, 17),
@@ -198,7 +235,7 @@ public sealed class SettingsDialog : Form
         var cancel = new Button
         {
             Text = "Cancelar",
-            Location = new Point(360, 434),
+            Location = new Point(360, 504),
             Size = new Size(100, 44),
             BackColor = Color.FromArgb(30, 34, 44),
             ForeColor = Color.White,

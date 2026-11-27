@@ -458,6 +458,7 @@ public sealed class MainForm : Form
         _config.ScheduleEnd = dialog.ScheduleEnd;
         _config.GentleMode = dialog.GentleMode;
         _config.Theme = dialog.Theme;
+        _config.AlertScreen = dialog.AlertScreen;
         _config.Save(AppPaths.DataDir);
 
         _alarm.Mode = _config.SoundMode;
@@ -1585,7 +1586,11 @@ public sealed class MainForm : Form
             }
 
             _alertForm.AddItem(item);
-            if (!_alertForm.Visible) _alertForm.Show();
+            if (!_alertForm.Visible)
+            {
+                PositionAlert(_alertForm);
+                _alertForm.Show();
+            }
             if (_alertForm.WindowState == FormWindowState.Minimized)
                 _alertForm.WindowState = FormWindowState.Normal;
             _alertForm.Activate();
@@ -1594,6 +1599,20 @@ public sealed class MainForm : Form
 
         if (InvokeRequired) BeginInvoke(new Action(Ui));
         else Ui();
+    }
+
+    private void PositionAlert(Form form)
+    {
+        var screens = Screen.AllScreens;
+        var index = _config.AlertScreen;
+        var screen = index >= 0 && index < screens.Length ? screens[index] : Screen.PrimaryScreen;
+        if (screen is null) return;
+
+        var area = screen.WorkingArea;
+        form.StartPosition = FormStartPosition.Manual;
+        form.Location = new Point(
+            area.Left + Math.Max(0, (area.Width - form.Width) / 2),
+            area.Top + Math.Max(0, (area.Height - form.Height) / 2));
     }
 
     private void OnAlertConfirmed(object? sender, EventArgs e)

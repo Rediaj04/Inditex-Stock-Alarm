@@ -56,7 +56,7 @@ Portable: `config.json`, `logs/` and the internal browser profile are stored **n
 - **Backoff** on failures (30→60→120→180 s) and a **watchdog** that restarts Edge if it dies.
 - **Only-alarm popup** with a big OK button; the siren keeps playing until you press it.
 - **Snooze 30 min** (the same button cancels it), **pause per product**, and “already bought → pause this product”.
-- **Settings**: sound mode (siren+voice / siren / voice / beep), ntfy push with a test button, schedule (e.g. 08:00–24:00), gentle mode (min 45 s), **start with Windows** and dark/light theme.
+- **Settings**: sound mode (siren+voice / siren / voice / beep), ntfy push with a test button, schedule (e.g. 08:00–24:00), gentle mode (min 45 s), **start with Windows**, **alert screen** and dark/light theme.
 - Prevents Windows from sleeping while watching.
 - Optional **update notice** (not forced) when a newer GitHub Release exists.
 - Live log with a **clear** button (does not delete files) and daily log files; `logs\historial.csv` with every stock change.
@@ -95,6 +95,7 @@ Small windows are supported: buttons wrap and rows are never clipped.
   "scheduleStart": "08:00",
   "scheduleEnd": "24:00",
   "theme": "dark",
+  "alertScreen": -1,
   "items": [
     {
       "name": "Jeans barrel",
@@ -107,7 +108,7 @@ Small windows are supported: buttons wrap and rows are never clipped.
 
 - `intervalSeconds`: 15–120 (or 5–120 if you unlock the lock).
 - `soundMode`: `both`, `siren`, `voice`, `beep`.
-- `theme`: `dark` or `light` (applies on restart).
+- `theme`: `dark` or `light` (applies on restart).\n- `alertScreen`: `-1` = default screen, `0` = first monitor, `1` = second monitor…
 - `ntfyTopic`: if set, sends a push to ntfy.sh on stock.
 
 ## How detection works
@@ -205,7 +206,7 @@ Portable: `config.json`, `logs/` y el perfil interno del navegador se guardan **
 - **Backoff** ante fallos (30→60→120→180 s) y **watchdog** que reinicia Edge si se cae.
 - **Ventana de aviso** con botón grande; la sirena no para hasta que lo pulsas.
 - **Snooze 30 min** (el mismo botón lo cancela), **pausar por producto** y “ya he comprado → pausar este producto”.
-- **Ajustes**: modo de sonido (sirena+voz / sirena / voz / pitido), ntfy con botón de prueba, horario (p. ej. 08:00–24:00), modo suave (mín. 45 s), **inicio con Windows** y tema oscuro/claro.
+- **Ajustes**: modo de sonido (sirena+voz / sirena / voz / pitido), ntfy con botón de prueba, horario (p. ej. 08:00–24:00), modo suave (mín. 45 s), **inicio con Windows**, **pantalla de la alerta** y tema oscuro/claro.
 - Impide que Windows entre en suspensión mientras vigila.
 - **Aviso de actualización** opcional (no obligatorio) si hay un Release nuevo.
 - Registro en vivo con botón **limpiar** (no borra archivos), logs diarios y `logs\historial.csv` con cada cambio de stock.
@@ -244,6 +245,7 @@ La ventana se adapta a tamaños pequeños: los botones se envuelven y las filas 
   "scheduleStart": "08:00",
   "scheduleEnd": "24:00",
   "theme": "dark",
+  "alertScreen": -1,
   "items": [
     {
       "name": "Jeans barrel",
@@ -256,7 +258,7 @@ La ventana se adapta a tamaños pequeños: los botones se envuelven y las filas 
 
 - `intervalSeconds`: 15–120 (o 5–120 si desbloqueas el candado).
 - `soundMode`: `both`, `siren`, `voice`, `beep`.
-- `theme`: `dark` o `light` (se aplica al reiniciar).
+- `theme`: `dark` o `light` (se aplica al reiniciar).\n- `alertScreen`: `-1` = pantalla predeterminada, `0` = primera pantalla, `1` = segunda…
 - `ntfyTopic`: si lo rellenas, envía un push a ntfy.sh al detectar stock.
 
 ## Cómo detecta el stock
