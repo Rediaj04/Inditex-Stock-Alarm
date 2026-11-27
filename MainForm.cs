@@ -63,6 +63,7 @@ public sealed class MainForm : Form
         _soundEnabled = _config.SoundEnabled;
         _alarm.Enabled = _soundEnabled;
         _alarm.Mode = _config.SoundMode;
+        _alarm.CustomSoundPath = _config.CustomSoundPath;
         Palette.Apply(_config.Theme);
 
         foreach (var itemConfig in _config.Items)
@@ -473,10 +474,12 @@ public sealed class MainForm : Form
         _config.Theme = dialog.Theme;
         _config.AlertScreen = dialog.AlertScreen;
         _config.StartMinimized = dialog.StartMinimized;
+        _config.CustomSoundPath = dialog.CustomSoundPath;
         _config.UiScale = dialog.UiScale;
         _config.Save(AppPaths.DataDir);
 
         _alarm.Mode = _config.SoundMode;
+        _alarm.CustomSoundPath = _config.CustomSoundPath;
 
         if (dialog.StartWithWindows != File.Exists(StartupShortcutPath))
             SetStartup(dialog.StartWithWindows);
@@ -545,7 +548,7 @@ public sealed class MainForm : Form
         add.Click += (_, _) => AddItem();
         head.Controls.Add(add);
 
-        head.Resize += (_, _) => add.Location = new Point(head.ClientSize.Width - add.Width - 4, 6);
+        head.Resize += (_, _) => add.Location = new Point(head.ClientSize.Width - add.Width, 6);
 
         _itemsPanel = new FlowLayoutPanel
         {
@@ -929,7 +932,7 @@ public sealed class MainForm : Form
     {
         if (_root is null) return;
 
-        var height = Math.Min(Px(230), Math.Max(Px(96), Px(58) + _items.Count * Px(84)));
+        var height = Math.Min(Px(260), Math.Max(Px(120), Px(64) + _items.Count * Px(84)));
         _root.RowStyles[2].Height = height;
     }
 
@@ -980,13 +983,25 @@ public sealed class MainForm : Form
 
         var sub = new Label
         {
-            Text = "tallas " + string.Join(",", item.Sizes),
+            Text = string.IsNullOrWhiteSpace(item.ColorName) ? "" : item.ColorName,
             Font = subFont,
             ForeColor = Palette.Muted,
             AutoSize = false,
             AutoEllipsis = true,
             Location = new Point(Px(71), top + nameHeight + 4),
             Size = new Size(300, subHeight)
+        };
+
+        var mid = new Label
+        {
+            Text = "tallas " + string.Join(",", item.Sizes)
+                   + (string.IsNullOrWhiteSpace(item.PriceText) ? "" : " · " + item.PriceText),
+            Font = subFont,
+            ForeColor = Palette.Muted,
+            AutoSize = false,
+            AutoEllipsis = true,
+            Location = new Point(Px(300), top + nameHeight + 4),
+            Size = new Size(200, subHeight)
         };
 
         var status = new Label
@@ -1014,7 +1029,7 @@ public sealed class MainForm : Form
         menu.FlatAppearance.BorderSize = 0;
         menu.Click += (_, _) => ShowItemMenu(item, menu);
 
-        panel.Controls.AddRange(new Control[] { thumb, name, sub, status, menu });
+        panel.Controls.AddRange(new Control[] { thumb, name, sub, mid, status, menu });
 
         void LayoutRow()
         {
@@ -1038,7 +1053,7 @@ public sealed class MainForm : Form
         if (!string.IsNullOrWhiteSpace(item.ImageUrl))
             LoadThumbnailAsync(thumb, item.ImageUrl!);
 
-        _rows[item.Config.Url] = new ItemRow(name, sub, status, panel, menu, thumb);
+        _rows[item.Config.Url] = new ItemRow(name, sub, mid, status, panel, menu, thumb);
         return panel;
     }
 
@@ -1079,7 +1094,7 @@ public sealed class MainForm : Form
     private void ReflowRows()
     {
         if (_itemsPanel is null) return;
-        var width = Math.Max(320, _itemsPanel.ClientSize.Width - 26 - SystemInformation.VerticalScrollBarWidth);
+        var width = Math.Max(320, _itemsPanel.ClientSize.Width);
         foreach (Control control in _itemsPanel.Controls)
         {
             if (control == _itemsEmpty) continue;
@@ -1103,8 +1118,12 @@ public sealed class MainForm : Form
         {
             row.Name.Text = item.DisplayName;
             row.Sub.Text = item.LastError is null
-                ? item.Subtitle
+                ? (string.IsNullOrWhiteSpace(item.ColorName) ? "" : item.ColorName)
                 : "error: " + Truncate(item.LastError, 110);
+            row.Mid.Text = item.LastError is null
+                ? "tallas " + string.Join(",", item.Sizes)
+                  + (string.IsNullOrWhiteSpace(item.PriceText) ? "" : " · " + item.PriceText)
+                : "";
             row.Status.Text = item.LastError is null ? item.StatusText : "ERROR";
             row.Status.ForeColor = item.LastError is not null
                 ? Palette.Amber
@@ -1953,7 +1972,7 @@ public sealed class MainForm : Form
         else Apply();
     }
 
-    private sealed record ItemRow(Label Name, Label Sub, Label Status, Panel Panel, Button Menu, PictureBox Thumb);
+    private sealed record ItemRow(Label Name, Label Sub, Label Mid, Label Status, Panel Panel, Button Menu, PictureBox Thumb);
 
     private enum LogKind
     {

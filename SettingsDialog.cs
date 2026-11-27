@@ -2,7 +2,7 @@ namespace InditexStockAlarm;
 
 public sealed class SettingsDialog : Form
 {
-    private static readonly string[] SoundValues = { "both", "siren", "voice", "beep" };
+    private static readonly string[] SoundValues = { "both", "siren", "voice", "beep", "custom" };
     private readonly string _originalTheme;
 
     private readonly ComboBox _sound;
@@ -17,6 +17,9 @@ public sealed class SettingsDialog : Form
     private readonly CheckBox _startup;
     private readonly CheckBox _startMinimized;
     private readonly ComboBox _scale;
+    private readonly Button _customButton;
+    private readonly Label _customLabel;
+    private string _customPath = "";
 
     public string SoundMode => SoundValues[Math.Max(0, _sound.SelectedIndex)];
     public string NtfyTopic => _ntfy.Text.Trim();
@@ -30,13 +33,14 @@ public sealed class SettingsDialog : Form
     public bool StartWithWindows => _startup.Checked;
     public bool StartMinimized => _startMinimized.Checked;
     public int UiScale => _scale.SelectedIndex == 2 ? 150 : _scale.SelectedIndex == 1 ? 125 : 100;
+    public string CustomSoundPath => _customPath;
 
     public SettingsDialog(AppConfig config, bool startWithWindows = false)
     {
         _originalTheme = config.Theme;
 
         Text = "Ajustes";
-        ClientSize = new Size(700, 640);
+        ClientSize = new Size(700, 660);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -58,11 +62,39 @@ public sealed class SettingsDialog : Form
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat
         };
-        _sound.Items.AddRange(new object[] { "Sirena + voz", "Solo sirena", "Solo voz", "Solo pitido" });
+        _customPath = config.CustomSoundPath;
+        _sound.Items.AddRange(new object[] { "Sirena + voz", "Solo sirena", "Solo voz", "Solo pitido", "Archivo personalizado" });
         _sound.SelectedIndex = Array.IndexOf(SoundValues, config.SoundMode);
         if (_sound.SelectedIndex < 0) _sound.SelectedIndex = 0;
         Controls.Add(_sound);
-        y += 44;
+
+        _customButton = new Button
+        {
+            Text = "Elegir…",
+            Location = new Point(300, y - 1),
+            Size = new Size(110, 26),
+            BackColor = Color.FromArgb(30, 34, 44),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
+        };
+        _customButton.FlatAppearance.BorderSize = 0;
+        _customButton.Click += (_, _) => PickCustomSound();
+        Controls.Add(_customButton);
+
+        _customLabel = new Label
+        {
+            Text = "",
+            ForeColor = Color.FromArgb(138, 147, 168),
+            AutoSize = false,
+            AutoEllipsis = true,
+            Location = new Point(30, y + 30),
+            Size = new Size(620, 18)
+        };
+        Controls.Add(_customLabel);
+        UpdateCustomLabel();
+
+        y += 62;
 
         Controls.Add(Header("Aviso al móvil (ntfy.sh)", ref y));
 
@@ -179,6 +211,30 @@ public sealed class SettingsDialog : Form
 
         y += 36;
 
+        Controls.Add(Header("Escala de la interfaz", ref y));
+
+        _scale = new ComboBox
+        {
+            Location = new Point(30, y),
+            Width = 120,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = Color.FromArgb(30, 34, 44),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat
+        };
+        _scale.Items.AddRange(new object[] { "100 %", "125 %", "150 %" });
+        _scale.SelectedIndex = config.UiScale >= 150 ? 2 : config.UiScale >= 125 ? 1 : 0;
+        Controls.Add(_scale);
+        Controls.Add(new Label
+        {
+            Text = "Se aplica al reiniciar la app.",
+            AutoSize = true,
+            ForeColor = Color.FromArgb(138, 147, 168),
+            Location = new Point(166, y + 4)
+        });
+
+        y += 36;
+
         Controls.Add(Header("Pantalla de la alerta", ref y));
 
         _screen = new ComboBox
@@ -196,7 +252,7 @@ public sealed class SettingsDialog : Form
         for (var i = 0; i < screens.Length; i++)
         {
             var s = screens[i];
-            _screen.Items.Add($"Pantalla {i + 1} ({s.Bounds.Width}×{s.Bounds.Height})");
+            _screen.Items.Add($"Pantalla {i + 1}{(s.Primary ? " · principal" : "")} ({s.Bounds.Width}×{s.Bounds.Height})");
         }
 
         _screen.SelectedIndex = config.AlertScreen >= 0 && config.AlertScreen < screens.Length
@@ -206,7 +262,7 @@ public sealed class SettingsDialog : Form
         Controls.Add(_screen);
         Controls.Add(new Label
         {
-            Text = "La ventana de aviso saldrá centrada en esa pantalla.",
+            Text = $"Detectadas {screens.Length} pantalla(s). La ventana saldrá centrada.",
             AutoSize = true,
             ForeColor = Color.FromArgb(138, 147, 168),
             Location = new Point(360, y + 4)
@@ -235,7 +291,7 @@ public sealed class SettingsDialog : Form
         var ok = new Button
         {
             Text = "Guardar",
-            Location = new Point(470, 574),
+            Location = new Point(470, 594),
             Size = new Size(200, 44),
             BackColor = Color.FromArgb(64, 214, 128),
             ForeColor = Color.FromArgb(8, 28, 17),
@@ -249,7 +305,7 @@ public sealed class SettingsDialog : Form
         var cancel = new Button
         {
             Text = "Cancelar",
-            Location = new Point(360, 574),
+            Location = new Point(360, 594),
             Size = new Size(100, 44),
             BackColor = Color.FromArgb(30, 34, 44),
             ForeColor = Color.White,
@@ -289,6 +345,28 @@ public sealed class SettingsDialog : Form
         BorderStyle = BorderStyle.FixedSingle,
         Font = new Font("Consolas", 10f)
     };
+
+    private void PickCustomSound()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Title = "Elegir sonido de alarma",
+            Filter = "Audio (*.wav;*.mp3;*.wma)|*.wav;*.mp3;*.wma|Todos los archivos (*.*)|*.*"
+        };
+
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        _customPath = dialog.FileName;
+        _sound.SelectedIndex = 4;
+        UpdateCustomLabel();
+    }
+
+    private void UpdateCustomLabel()
+    {
+        _customLabel.Text = string.IsNullOrWhiteSpace(_customPath)
+            ? "Sin archivo: elige un WAV, MP3 o WMA."
+            : Path.GetFileName(_customPath);
+    }
 
     private async Task TestPushAsync()
     {
@@ -330,6 +408,13 @@ public sealed class SettingsDialog : Form
 
     private void TryAccept()
     {
+        if (SoundMode == "custom" && (string.IsNullOrWhiteSpace(_customPath) || !File.Exists(_customPath)))
+        {
+            MessageBox.Show(this, "Elige un archivo de sonido válido o cambia el modo de sonido.",
+                "Sonido personalizado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
         if (_schedule.Checked &&
             (!TimeSpan.TryParse(_start.Text, out _) || !TimeSpan.TryParse(_end.Text, out _)))
         {

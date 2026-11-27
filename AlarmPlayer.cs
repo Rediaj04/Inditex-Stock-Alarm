@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace InditexStockAlarm;
@@ -9,6 +10,10 @@ public sealed class AlarmPlayer
     private static object? _voice;
 
     public bool Enabled { get; set; } = true;
+    public string? CustomSoundPath { get; set; }
+
+    [DllImport("winmm.dll", CharSet = CharSet.Unicode)]
+    private static extern int mciSendString(string command, System.Text.StringBuilder? ret, int retLen, IntPtr hwnd);
 
     /// <summary>both | siren | voice | beep</summary>
     public string Mode { get; set; } = "both";
@@ -48,6 +53,9 @@ public sealed class AlarmPlayer
             case "beep":
                 NativeMethods.PlayLoop(_beepPath);
                 break;
+            case "custom":
+                PlayCustom();
+                break;
             default:
                 NativeMethods.PlayLoop(_sirenPath);
                 Speak(message);
@@ -55,7 +63,11 @@ public sealed class AlarmPlayer
         }
     }
 
-    public void Silence() => NativeMethods.StopSound();
+    public void Silence()
+    {
+        NativeMethods.StopSound();
+        StopCustom();
+    }
 
     public void TestSound()
     {
@@ -72,6 +84,9 @@ public sealed class AlarmPlayer
             case "siren":
                 NativeMethods.PlayLoop(_sirenPath);
                 break;
+            case "custom":
+                PlayCustom();
+                break;
             default:
                 NativeMethods.PlayLoop(_sirenPath);
                 Speak("Prueba de aviso. Así sonará la alarma.");
@@ -86,6 +101,55 @@ public sealed class AlarmPlayer
             Silence();
         };
         timer.Start();
+    }
+
+    private void PlayCustom()
+    {
+        StopCustom();
+
+        var path = CustomSoundPath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            NativeMethods.PlayLoop(_sirenPath);
+            return;
+        }
+
+        var type = Path.GetExtension(path).Equals(".wav", StringComparison.OrdinalIgnoreCase)
+            ? "waveaudio"
+            : "mpegvideo";
+
+        if (Mci("open \"" + path + "\" type " + type + " alias bskcustom") != 0)
+        {
+            NativeMethods.PlayLoop(_sirenPath);
+            return;
+        }
+
+        Mci("play bskcustom repeat");
+    }
+
+    private static void StopCustom()
+    {
+        try
+        {
+            Mci("stop bskcustom");
+            Mci("close bskcustom");
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    private static int Mci(string command)
+    {
+        try
+        {
+            return mciSendString(command, null, 0, IntPtr.Zero);
+        }
+        catch
+        {
+            return -1;
+        }
     }
 
     public static void Speak(string text)

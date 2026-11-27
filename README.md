@@ -56,7 +56,7 @@ Portable: `config.json`, `logs/` and the internal browser profile are stored **n
 - **Backoff** on failures (30→60→120→180 s) and a **watchdog** that restarts Edge if it dies.
 - **Only-alarm popup** with a big OK button; the siren keeps playing until you press it.
 - **Snooze 30 min** (the same button cancels it), **pause per product**, and “already bought → pause this product”.
-- **Settings**: sound mode, ntfy push with a test button, schedule, gentle mode, **start with Windows**, **start minimised**, **alert screen**, **UI scale (100/125/150 %)** and dark/light theme.
+- **Settings**: sound mode (siren+voice / siren / voice / beep / **your own WAV-MP3-WMA**), ntfy push with a test button, schedule, gentle mode, **start with Windows**, **start minimised**, **alert screen (detects your monitors)** , **UI scale (100/125/150 %)** and dark/light theme.
 - Tray tooltip with the current status. Prevents Windows from sleeping while watching.
 - Optional **update notice** (not forced) when a newer GitHub Release exists.
 - Live log with a **clear** button (does not delete files) and daily log files; `logs\historial.csv` with every stock change.
@@ -97,6 +97,7 @@ Small windows are supported: buttons wrap and rows are never clipped.
   "scheduleEnd": "24:00",
   "theme": "dark",
   "uiScale": 100,
+  "customSoundPath": "",
   "startMinimized": false,
   "alertScreen": -1,
   "items": [
@@ -228,7 +229,7 @@ Portable: `config.json`, `logs/` y el perfil interno del navegador se guardan **
 - **Backoff** ante fallos (30→60→120→180 s) y **watchdog** que reinicia Edge si se cae.
 - **Ventana de aviso** con botón grande; la sirena no para hasta que lo pulsas.
 - **Snooze 30 min** (el mismo botón lo cancela), **pausar por producto** y “ya he comprado → pausar este producto”.
-- **Ajustes**: modo de sonido, ntfy con botón de prueba, horario, modo suave, **inicio con Windows**, **arrancar minimizada**, **pantalla de la alerta**, **escala de interfaz (100/125/150 %)** y tema oscuro/claro.
+- **Ajustes**: modo de sonido (sirena+voz / sirena / voz / pitido / **tu propio WAV-MP3-WMA**), ntfy con botón de prueba, horario, modo suave, **inicio con Windows**, **arrancar minimizada**, **pantalla de la alerta (detecta tus pantallas)**, **escala de interfaz (100/125/150 %)** y tema oscuro/claro.
 - Tooltip en la bandeja con el estado actual. Impide que Windows entre en suspensión mientras vigila.
 - **Aviso de actualización** opcional (no obligatorio) si hay un Release nuevo.
 - Registro en vivo con botón **limpiar** (no borra archivos), logs diarios y `logs\historial.csv` con cada cambio de stock.
@@ -269,6 +270,7 @@ La ventana se adapta a tamaños pequeños: los botones se envuelven y las filas 
   "scheduleEnd": "24:00",
   "theme": "dark",
   "uiScale": 100,
+  "customSoundPath": "",
   "startMinimized": false,
   "alertScreen": -1,
   "items": [
