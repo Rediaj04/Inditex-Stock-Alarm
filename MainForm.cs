@@ -787,7 +787,7 @@ public sealed class MainForm : Form
 
         item.Page = await _edge.NewTabAsync(item.Config.Url, ct);
         await item.Page.EnableFastModeAsync(ct);
-        await item.Page.WaitForAsync("document.readyState !== 'loading'", 15000, ct);
+        await item.Page.WaitForAsync("document.readyState === 'complete'", 30000, ct);
         await Task.Delay(800, ct);
         item.FreshlyLoaded = true;
     }
@@ -1252,7 +1252,7 @@ public sealed class MainForm : Form
                     if (item.Page is not null && item.Page.IsOpen) continue;
                     item.Page = await _edge!.NewTabAsync(item.Config.Url, ct);
                     await item.Page.EnableFastModeAsync(ct);
-                    await item.Page.WaitForAsync("document.readyState !== 'loading'", 15000, ct);
+                    await item.Page.WaitForAsync("document.readyState === 'complete'", 30000, ct);
                     await Task.Delay(1000, ct);
                     item.FreshlyLoaded = true;
                     Log($"Pestaña lista: {item.DisplayName}", LogKind.Info);
@@ -1370,39 +1370,54 @@ public sealed class MainForm : Form
             item.FreshlyLoaded = false;
 
             // 2) Resolver la API de la ficha (funciona aunque la web no pinte las tallas)
+            await item.Page.WaitForAsync("document.readyState === 'complete'", 20000, ct);
+            await Task.Delay(600, ct);
+
             string? apiReason = null;
-            try
+            CheckPayload? resolved = null;
+
+            for (var attempt = 0; attempt < 2; attempt++)
             {
-                var resolveValue = await item.Page.EvaluateAsync(
-                    MonitorScripts.ResolveApiScript(item.ColorId), 30000, ct);
-                var resolved = ParsePayload(resolveValue?.GetString());
-                if (resolved is { Ok: true })
+                if (attempt > 0)
+                    await Task.Delay(1500, ct);
+
+                try
                 {
-                    item.ApiStoreId = resolved.StoreId;
-                    item.ApiProductId = resolved.ProductId;
-                    item.ApiColorId = resolved.ColorId;
+                    var resolveValue = await item.Page.EvaluateAsync(
+                        MonitorScripts.ResolveApiScript(item.ColorId), 30000, ct);
+                    resolved = ParsePayload(resolveValue?.GetString());
 
-                    if (item.Sizes.Length > 0)
-                    {
-                        var map = resolved.Sizes
-                            .GroupBy(s => s.Size, StringComparer.OrdinalIgnoreCase)
-                            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+                    if (resolved is { Ok: true })
+                        break;
 
-                        resolved.Sizes = item.Sizes
-                            .Select(w => map.TryGetValue(w, out var found)
-                                ? found
-                                : new SizeResult { Size = w, Visibility = "NO_EXISTE" })
-                            .ToList();
-                    }
+                    apiReason = resolved?.Reason ?? "sin-respuesta";
+                }
+                catch (Exception ex)
+                {
+                    apiReason = ex.Message;
+                }
+            }
 
-                    return (item, resolved, null);
+            if (resolved is { Ok: true })
+            {
+                item.ApiStoreId = resolved.StoreId;
+                item.ApiProductId = resolved.ProductId;
+                item.ApiColorId = resolved.ColorId;
+
+                if (item.Sizes.Length > 0)
+                {
+                    var map = resolved.Sizes
+                        .GroupBy(s => s.Size, StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+                    resolved.Sizes = item.Sizes
+                        .Select(w => map.TryGetValue(w, out var found)
+                            ? found
+                            : new SizeResult { Size = w, Visibility = "NO_EXISTE" })
+                        .ToList();
                 }
 
-                apiReason = resolved?.Reason ?? "sin-respuesta";
-            }
-            catch (Exception ex)
-            {
-                apiReason = ex.Message;
+                return (item, resolved, null);
             }
 
             // 3) Fallback: leer tallas del DOM
