@@ -1,0 +1,28 @@
+name: Nueva web / mejora
+description: Proponer soporte para otra web o una mejora
+labels: [enhancement]
+body:
+  - type: input
+    id: url
+    attributes:
+      label: URL de ejemplo
+      description: Una ficha real (se vende y cambia, pero sirve de referencia).
+      placeholder: https://www...
+  - type: input
+    id: sizes
+    attributes:
+      label: Tallas que aparecen
+      placeholder: 36,38,40 / XS,S,M,L / Única
+  - type: textarea
+    id: idea
+    attributes:
+      label: Qué propones
+    validations:
+      required: true
+  - type: checkboxes
+    id: pr
+    attributes:
+      label: ¿Puedes enviar un PR?
+      options:
+        - label: Sí, puedo intentarlo
+        - label: No, solo lo propongo

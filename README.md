@@ -6,17 +6,162 @@
 ![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4)
 
-Aplicación de escritorio para Windows que vigila la disponibilidad de las tallas que elijas en fichas de **webs de Inditex** (Bershka, Zara, Pull&Bear, Stradivarius, Oysho, Massimo Dutti…) y te avisa con alarma, ventana emergente y una pestaña abierta en Brave.
+Windows desktop app that watches the sizes you choose on **Inditex product pages** (Bershka, Zara, Pull&Bear, Stradivarius, Oysho, Massimo Dutti) and alerts you with a siren, a big popup and a tab opened in Brave.
+
+> Personal project, not affiliated with Inditex. Use it responsibly and respect each site's terms.
+
+> **It is only an alarm.** It does not add to cart, fill forms or buy anything. You do the purchase.
+
+> **100% open source.** Copy it, fork it, modify it. All I ask (and the MIT license requires) is to keep the copyright notice; a link back and a "thanks" are welcome but optional.
+
+![Main window](docs/app.png)
+
+## Supported sites
+
+| Site | Status |
+| --- | --- |
+| Bershka | ✅ tested (size 44) |
+| Zara | ✅ tested (size M) |
+| Pull&Bear | ✅ tested via API (its page blocks headless, the API responds) |
+| Stradivarius | ✅ tested (size M) |
+| Oysho | ✅ tested (size M) |
+| Massimo Dutti | ✅ tested via API (sizes 35–42) |
+| Uterqüe | ➡️ redirects to Massimo Dutti |
+| Zara Home | ➖ not applicable (home goods, no sizes) |
+
+If a site cannot be read, the row shows **ERROR** and the log says why (`sin-tallas`, `api-http`…).
+
+## Download and run (no install needed)
+
+1. Open **Releases** and download `InditexStockAlarm.exe` (portable build).
+2. Put it anywhere (Desktop, Documents, USB stick). No installer, no admin rights.
+3. Double click. The first time it asks you to add a product.
+4. Paste the product URL, hit **Buscar tallas**, pick sizes and press **INICIAR**.
+
+Requirements: **Windows 10/11 64-bit** and **Microsoft Edge** (bundled with Windows). Brave is optional; without it the alert opens in your default browser.
+
+> The executable is not signed, so SmartScreen may warn once: *More info → Run anyway*.
+
+## Where data is stored
+
+Portable: `config.json`, `logs/` and the internal Edge profile are stored **next to the exe** if the folder is writable. Otherwise it uses `%LOCALAPPDATA%\InditexStockAlarm`.
+
+## Features
+
+- Add any Inditex product by URL; the app reads the **real sizes** (M, L, 44, Única…) and lets you pick which ones to watch.
+- Several URLs at once = several colours of the same product.
+- **API mode**: after the first load it polls the site's JSON (faster, fewer requests, works even when the page blocks headless).
+- **Price and colour** from that API.
+- 15 s minimum interval with a **lock**: unlocking it below 15 s shows a red warning about the risks.
+- **Backoff** on failures (30→60→120→180 s) and a **watchdog** that restarts Edge if it dies.
+- **Only-alarm popup** with a big OK button; the siren keeps playing until you press it.
+- **Snooze 30 min**, **pause per product**, and “already bought → pause this product”.
+- **Settings**: sound mode (siren+voice / siren / voice / beep), ntfy push with a test button, schedule (e.g. 08:00–24:00), gentle mode (min 45 s) and dark/light theme.
+- Prevents Windows from sleeping while watching.
+- Optional **update notice** (not forced) when a newer GitHub Release exists.
+- Live log and daily log files; `logs\historial.csv` with every stock change.
+
+![Alert](docs/alerta.png)
+
+## Usage
+
+1. Press **＋ Añadir producto**, paste one URL per line (several = several colours).
+2. Press **Buscar tallas**: the app opens the page in a hidden Edge and lists the real sizes with their state.
+3. Tick the sizes you want (available ones are pre-ticked). If the site cannot be read, type them by hand (`44`, `M,L`, `Única`).
+4. Press **INICIAR** (it also starts on launch). Minimise to the tray if you want.
+
+Small windows are supported: buttons wrap and rows are never clipped.
+
+![Add product](docs/add.png)
+
+![Settings](docs/settings.png)
+
+> Sizes cannot be preselected by URL: the tab opens on the right product and colour, and you tap the size and “Add to cart”.
+
+## Configuration
+
+`config.json`:
+
+```json
+{
+  "intervalSeconds": 15,
+  "allowFastInterval": false,
+  "soundEnabled": true,
+  "soundMode": "both",
+  "openInBrave": true,
+  "ntfyTopic": "",
+  "gentleMode": false,
+  "scheduleEnabled": false,
+  "scheduleStart": "08:00",
+  "scheduleEnd": "24:00",
+  "theme": "dark",
+  "items": [
+    {
+      "name": "Jeans barrel",
+      "url": "https://www.bershka.com/es/jeans-barrel-c0p229733871.html?colorId=428",
+      "sizes": "44"
+    }
+  ]
+}
+```
+
+- `intervalSeconds`: 15–120 (or 5–120 if you unlock the lock).
+- `soundMode`: `both`, `siren`, `voice`, `beep`.
+- `theme`: `dark` or `light` (applies on restart).
+- `ntfyTopic`: if set, sends a push to ntfy.sh on stock.
+
+## How detection works
+
+1. **API (preferred)**: discovers `storeId` and `productId` from the page (`pelement`, `c0p…` or the HTML), resolves bundles and reads the internal `itxrest` JSON. That is where sizes, state, colour and price come from. Later checks go straight to that JSON, without reloading the page.
+2. **DOM (fallback)**: reloads the page and reads the size buttons (`button.size-button`, `button.size-item`, Zara's modal after “Añadir”, etc.), accepting cookie/location banners and ignoring recommendation carousels.
+3. If nothing works, the row shows **ERROR** with the reason.
+
+## Tests
+
+```bat
+dotnet test tests/InditexStockAlarm.Tests/InditexStockAlarm.Tests.csproj -c Release
+```
+
+Covers URL parsing (Bershka, Zara, Pull&Bear), sizes (`44`, `M,L`), name guessing and config save/load. CI runs them on every push. A scheduled workflow (`probe.yml`) checks real product pages weekly to detect site changes.
+
+## Build
+
+```bat
+build-release.cmd
+```
+
+Generates `release\InditexStockAlarm.exe` (single self-contained file). Quick framework-dependent build:
+
+```bat
+dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
+```
+
+## Known limitations
+
+- Inditex only; selectors may need updates if they redesign the pages.
+- With 15 s, a very short restock can be missed.
+- If the app or PC is off/suspended, it stops watching.
+- No purchase automation.
+
+## Attribution
+
+If you copy or redistribute this project (or a modified version), keep the `LICENSE` file with the copyright notice. A link to the original repo and a “thanks” are appreciated but not required.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+---
+
+# Versión en español
+
+Aplicación de escritorio para Windows que vigila las tallas que elijas en **fichas de webs de Inditex** (Bershka, Zara, Pull&Bear, Stradivarius, Oysho, Massimo Dutti) y te avisa con sirena, ventana emergente y una pestaña abierta en Brave.
 
 > Proyecto personal, sin relación con Inditex. Úsalo de forma responsable y respetando los términos de cada web.
 
-> **Solo es una alarma.** No añade a la cesta, no rellena datos y no compra nada. Cuando detecta stock, avisa y abre la ficha; la compra la haces tú.
+> **Solo es una alarma.** No añade a la cesta, no rellena datos y no compra nada. La compra la haces tú.
 
-## 100 % abierto: cópialo, cámbialo, mejóralo
-
-El código es libre (MIT): puedes copiarlo, modificarlo, forkerlo y redistribuirlo, incluso sin pedir permiso. No me molesta que se reutilice.
-
-Lo único que pido (y que la licencia MIT ya exige) es **mantener el aviso de copyright** y, si te apetece, enlazar el repo original y darme las gracias. Con eso me vale.
+> **100% abierto.** Puedes copiarlo, forkerlo y modificarlo. Solo pido (y la licencia MIT exige) mantener el aviso de copyright; un enlace y un “gracias” se agradecen, pero no son obligatorios.
 
 ![Ventana principal](docs/app.png)
 
@@ -26,69 +171,59 @@ Lo único que pido (y que la licencia MIT ya exige) es **mantener el aviso de co
 | --- | --- |
 | Bershka | ✅ probado (talla 44) |
 | Zara | ✅ probado (talla M) |
-| Oysho | ✅ probado (talla M) |
+| Pull&Bear | ✅ probado por API (su web bloquea el headless, la API responde) |
 | Stradivarius | ✅ probado (talla M) |
-| Pull&Bear | ✅ probado por API (su web bloquea el headless, pero la API responde) |
+| Oysho | ✅ probado (talla M) |
 | Massimo Dutti | ✅ probado por API (tallas 35–42) |
-| Uterqüe | ➡️ redirige a Massimo Dutti (sin catálogo propio) |
+| Uterqüe | ➡️ redirige a Massimo Dutti |
 | Zara Home | ➖ no aplica: hogar, sin tallas |
 
-La app acepta cualquier URL de esos dominios. Si en una web no encuentra las tallas, lo muestra como **ERROR** en la fila del producto (no falla en silencio) y el log dice `sin-tallas`.
+Si una web no se puede leer, la fila muestra **ERROR** y el log indica el motivo (`sin-tallas`, `api-http`…).
 
 ## Descargar y ejecutar (sin instalar nada)
 
-1. Ve a **Releases** y descarga `InditexStockAlarm.exe` (build portable, ya lleva todo dentro).
-2. Ponlo en una carpeta normal (Escritorio, Documentos, un USB…). No necesita instalador ni administrador.
+1. Entra en **Releases** y descarga `InditexStockAlarm.exe` (build portable).
+2. Ponlo donde quieras (Escritorio, Documentos, USB). Sin instalador ni administrador.
 3. Doble clic. La primera vez te pide añadir un producto.
-4. Pega la URL de la ficha, escribe la talla y dale a **INICIAR**.
+4. Pega la URL, pulsa **Buscar tallas**, elige tallas y dale a **INICIAR**.
 
-Requisitos: **Windows 10/11 de 64 bits** y **Microsoft Edge** (viene preinstalado en Windows). Brave es opcional: si no está, el aviso se abre en tu navegador por defecto.
+Requisitos: **Windows 10/11 de 64 bits** y **Microsoft Edge** (viene con Windows). Brave es opcional; si no está, el aviso se abre en tu navegador por defecto.
 
-> El ejecutable no está firmado, así que SmartScreen puede avisar la primera vez: *Más información → Ejecutar de todas formas*.
+> El ejecutable no está firmado, así que SmartScreen puede avisar una vez: *Más información → Ejecutar de todas formas*.
 
 ## Dónde guarda los datos
 
-La app es portable: guarda `config.json`, `logs/` y el perfil interno de Edge **junto al .exe** si la carpeta es escribible. Si no lo es (por ejemplo en `Program Files`), usa `%LOCALAPPDATA%\InditexStockAlarm`.
+Portable: `config.json`, `logs/` y el perfil interno de Edge se guardan **junto al .exe** si la carpeta permite escribir. Si no, usa `%LOCALAPPDATA%\InditexStockAlarm`.
 
 ## Qué hace
 
-- Añades productos pegando su URL y escribiendo la talla (o varias: `42,44,46`, o letras: `S,M,L`).
-- **Modo API**: tras la primera carga consulta el JSON interno de la ficha (más rápido, menos peticiones y funciona en webs que bloquean el headless, como Pull&Bear).
-- **Precio y color** reales desde esa API.
-- **Backoff**: si algo falla, espera cada vez más antes de reintentar (evita empeorar un bloqueo).
-- **Búsqueda de tallas**: al añadir un producto, pulsa **Buscar tallas** y la app abre la ficha en segundo plano para listar las tallas reales (M, L, 44, Única…) con su estado. Marcas las que quieras vigilar.
-- Consulta el stock cada 15 s (mínimo recomendado) en un **Edge oculto en segundo plano**, así que no te abre ventanas de Edge.
-- **Candado de 15 s**: el intervalo no baja de 15 s. Si pulsas el candado `🔒 mín. 15 s`, sale un aviso en rojo explicando las consecuencias; si lo aceptas, se desbloquea hasta 5 s (bajo tu responsabilidad).
-- Cuando la talla pasa a disponible:
-  - **Ventana emergente grande y siempre encima** con un botón `OK · ¡VOY A COMPRAR!`.
-  - **Sirena + voz** que no para hasta que pulsas OK (o silencias). Se puede desactivar con `Sonido: ON/OFF`.
-  - Abre la **pestaña en Brave** con el producto y color exactos.
-  - Notificación en la bandeja y parpadeo de la ventana.
-- Si la talla sigue disponible, repite el aviso cada 2 minutos (con 5 min de silencio tras pulsar OK).
-- Impide que el PC entre en suspensión mientras vigila.
-- **Iniciar con Windows** opcional desde la propia ventana (checkbox).
-- **Aviso al móvil** opcional con [ntfy](https://ntfy.sh) (push gratis, sin cuenta).
-- **Historial CSV** con cada cambio de stock (`logs\historial.csv`).
-- **Comprobación de actualizaciones** contra GitHub Releases.
-- Registro en vivo y en `logs\monitor-AAAAMMDD.log`.
+- Añades cualquier producto de Inditex por URL; la app lee las **tallas reales** (M, L, 44, Única…) y te deja elegir cuáles vigilar.
+- Varias URLs a la vez = varios colores del mismo producto.
+- **Modo API**: tras la primera carga consulta el JSON de la web (más rápido, menos peticiones y funciona aunque la página bloquee el headless).
+- **Precio y color** desde esa API.
+- Intervalo mínimo de 15 s con **candado**: si lo desbloqueas por debajo de 15 s sale un aviso rojo con los riesgos.
+- **Backoff** ante fallos (30→60→120→180 s) y **watchdog** que reinicia Edge si se cae.
+- **Ventana de aviso** con botón grande; la sirena no para hasta que lo pulsas.
+- **Snooze 30 min**, **pausar por producto** y “ya he comprado → pausar este producto”.
+- **Ajustes**: modo de sonido (sirena+voz / sirena / voz / pitido), ntfy con botón de prueba, horario (p. ej. 08:00–24:00), modo suave (mín. 45 s) y tema oscuro/claro.
+- Impide que Windows entre en suspensión mientras vigila.
+- **Aviso de actualización** opcional (no obligatorio) si hay un Release nuevo.
+- Registro en vivo, logs diarios y `logs\historial.csv` con cada cambio de stock.
 
 ![Ventana de aviso](docs/alerta.png)
 
 ## Uso
 
-1. Pulsa **＋ Añadir producto**, pega la URL y pulsa **Buscar tallas**.
-   - La app abre la ficha en un Edge oculto y te muestra las tallas reales con su estado.
-   - Marca las tallas que quieras vigilar (viene marcadas las disponibles).
-   - Si esa web no deja leerlas, escríbelas a mano (`44`, `M,L`, `Única`…).
-   - El color se toma del parámetro `colorId` de la URL o de la propia URL (Zara usa `v1`).
-2. Pulsa **INICIAR** (arranca solo al abrir).
-3. Deja la app abierta o minimizada en la bandeja.
+1. Pulsa **＋ Añadir producto** y pega una URL por línea (varias = varios colores).
+2. Pulsa **Buscar tallas**: la app abre la ficha en un Edge oculto y lista las tallas reales con su estado.
+3. Marca las que quieras (las disponibles vienen marcadas). Si la web no se deja leer, escríbelas a mano (`44`, `M,L`, `Única`).
+4. Pulsa **INICIAR** (también arranca al abrir). Minimiza a la bandeja si quieres.
 
 La ventana se adapta a tamaños pequeños: los botones se envuelven y las filas no se recortan.
 
-![Ventana pequeña](docs/app-small.png)
-
 ![Añadir producto](docs/add.png)
+
+![Ajustes](docs/settings.png)
 
 > La talla no se puede preseleccionar por URL: la pestaña se abre en la ficha y color correctos, y tú tocas la talla y “Añadir a la cesta”.
 
@@ -101,56 +236,34 @@ La ventana se adapta a tamaños pequeños: los botones se envuelven y las filas 
   "intervalSeconds": 15,
   "allowFastInterval": false,
   "soundEnabled": true,
+  "soundMode": "both",
   "openInBrave": true,
   "ntfyTopic": "",
+  "gentleMode": false,
+  "scheduleEnabled": false,
+  "scheduleStart": "08:00",
+  "scheduleEnd": "24:00",
+  "theme": "dark",
   "items": [
     {
       "name": "Jeans barrel",
       "url": "https://www.bershka.com/es/jeans-barrel-c0p229733871.html?colorId=428",
       "sizes": "44"
-    },
-    {
-      "name": "Camiseta Zara",
-      "url": "https://www.zara.com/es/es/camiseta-tank-rib-basica-p04087450.html",
-      "sizes": "M"
     }
   ]
 }
 ```
 
 - `intervalSeconds`: 15–120 (o 5–120 si desbloqueas el candado).
-- `allowFastInterval`: si es `true`, permite bajar de 15 s sin pasar por el aviso.
-- `soundEnabled`: sirena y voz.
-- `openInBrave`: abrir pestaña automáticamente al detectar stock.
-- `ntfyTopic`: si lo rellenas, envía un push al móvil al detectar stock (ver abajo).
-- `items`: lista de productos. También se puede editar a mano y reiniciar.
-  - **Varios colores**: añade un ítem por color (la misma ficha con otro `colorId` o `v1`). La app avisa si cualquiera tiene stock.
-
-## Aviso al móvil con ntfy (gratis, sin cuenta)
-
-1. Instala la app **ntfy** en tu móvil (Android/iOS) o abre [ntfy.sh](https://ntfy.sh).
-2. Suscríbete a un tema inventado y difícil de adivinar, por ejemplo `stock-7f3k9x2`.
-3. En `config.json` pon `"ntfyTopic": "stock-7f3k9x2"`.
-4. Reinicia la app. Al detectar stock llegará un push urgente con producto, talla, precio y enlace.
-
-El tema es público: usa un nombre largo y aleatorio. No pongas datos personales.
-
-## Iniciar con Windows
-
-Marca **Iniciar con Windows** en la cabecera de la lista de productos. Crea un acceso directo en la carpeta de inicio del usuario; desmárcalo para quitarlo.
-
-## Historial CSV
-
-Cada cambio de disponibilidad se añade a `logs\historial.csv` (fecha, hora, producto, tallas, estado, color y URL). Se abre con Excel o cualquier hoja de cálculo.
+- `soundMode`: `both`, `siren`, `voice`, `beep`.
+- `theme`: `dark` o `light` (se aplica al reiniciar).
+- `ntfyTopic`: si lo rellenas, envía un push a ntfy.sh al detectar stock.
 
 ## Cómo detecta el stock
 
-1. **API (preferido)**: descubre el `storeId` y el `productId` de la ficha (`pelement`, `c0p…` o el HTML), resuelve el bundle si lo hay y consulta el JSON interno `itxrest`. De ahí salen tallas, estado, color y precio. Las siguientes comprobaciones van directas a ese JSON, sin recargar la página.
-2. **DOM (respaldo)**: si la API no responde, recarga la ficha y lee los botones de talla:
-   - Bershka y similares: `button.size-button` (deshabilitado = agotada; `--low-stock` = pocas).
-   - Zara: el selector aparece al pulsar “Añadir”; la app lo abre solo para leer las tallas.
-   - Stradivarius: `button.size-item`; se aceptan cookies/ubicación y se ignora el carrusel de recomendados.
-3. Si nada funciona, la fila muestra **ERROR** con el motivo y el log lo detalla (`sin-tallas`, `api-http`…).
+1. **API (preferido)**: descubre `storeId` y `productId` de la ficha (`pelement`, `c0p…` o el HTML), resuelve bundles y lee el JSON interno `itxrest`. De ahí salen tallas, estado, color y precio. Las siguientes comprobaciones van directas a ese JSON, sin recargar la página.
+2. **DOM (respaldo)**: recarga la ficha y lee los botones de talla (`button.size-button`, `button.size-item`, el modal de Zara tras “Añadir”…), acepta banners de cookies/ubicación e ignora los carruseles de recomendados.
+3. Si nada funciona, la fila muestra **ERROR** con el motivo.
 
 ## Pruebas
 
@@ -158,35 +271,30 @@ Cada cambio de disponibilidad se añade a `logs\historial.csv` (fecha, hora, pro
 dotnet test tests/InditexStockAlarm.Tests/InditexStockAlarm.Tests.csproj -c Release
 ```
 
-Cubren el parseo de URLs (Bershka, Zara, Pull&Bear), tallas (`44`, `M,L`), nombres deducidos y guardado/carga de `config.json`. El workflow de GitHub Actions ejecuta los tests en cada push antes de compilar.
+Cubren el parseo de URLs (Bershka, Zara, Pull&Bear), tallas (`44`, `M,L`), nombres deducidos y guardado/carga de `config.json`. El CI las ejecuta en cada push. Un workflow programado (`probe.yml`) comprueba fichas reales cada semana para detectar cambios de las webs.
 
 ## Compilar
-
-Con el SDK de .NET 10:
 
 ```bat
 build-release.cmd
 ```
 
-Genera `release\InditexStockAlarm.exe` (un solo archivo autocontenido). Para una build rápida que use el runtime instalado:
+Genera `release\InditexStockAlarm.exe` (autocontenido). Build rápida que usa el runtime instalado:
 
 ```bat
 dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
 ```
 
-El repositorio incluye un workflow de GitHub Actions (`.github/workflows/build.yml`) que compila la versión portable en cada push y crea un Release al subir un tag `v*`.
-
 ## Límites conocidos
 
-- Solo webs de Inditex; el parseo de URL y los selectores son suyos. Si cambian el diseño de la ficha, habrá que ajustar los selectores.
-- Con 15 s de intervalo, un reestock muy corto puede escaparse.
-- Si cierras la app o el PC se apaga/suspende, deja de vigilar.
-- La web puede bloquear peticiones si se abusa de la frecuencia; el log muestra los fallos.
+- Solo Inditex; los selectores pueden necesitar ajustes si rediseñan las fichas.
+- Con 15 s, un reestock muy corto puede escaparse.
+- Si la app o el PC se apagan/suspenden, deja de vigilar.
 - No automatiza la compra.
 
 ## Atribución
 
-Si copias o redistribuyes este proyecto (o una versión modificada), mantén el archivo `LICENSE` con el aviso de copyright. Además, si quieres, añade un enlace al repo original y un “gracias”; no es obligatorio, pero se agradece.
+Si copias o redistribuyes este proyecto (o una versión modificada), mantén el archivo `LICENSE` con el aviso de copyright. Un enlace al repo original y un “gracias” se agradecen, pero no son obligatorios.
 
 ## Licencia
 
