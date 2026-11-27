@@ -32,7 +32,7 @@ Gracias por querer mejorar Inditex Stock Alarm.
 
 - Un cambio por PR, con un mensaje claro.
 - No subas `config.json`, perfiles de Edge ni logs.
-- Mantén el aviso de copyright (licencia MIT).
+- Mantén el aviso de copyright y la atribución (licencia no comercial; no se permite uso comercial ni reventa).
 
 ## Atribución
 

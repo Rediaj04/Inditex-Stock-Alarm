@@ -2,7 +2,7 @@
 
 [![build](https://github.com/Rediaj04/Inditex-Stock-Alarm/actions/workflows/build.yml/badge.svg)](https://github.com/Rediaj04/Inditex-Stock-Alarm/actions/workflows/build.yml)
 [![release](https://img.shields.io/github/v/release/Rediaj04/Inditex-Stock-Alarm)](https://github.com/Rediaj04/Inditex-Stock-Alarm/releases/latest)
-[![license](https://img.shields.io/github/license/Rediaj04/Inditex-Stock-Alarm)](LICENSE)
+![License](https://img.shields.io/badge/license-NonCommercial-red)
 ![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4)
 
@@ -12,7 +12,7 @@ Windows desktop app that watches the sizes you choose on **Inditex product pages
 
 > **It is only an alarm.** It does not add to cart, fill forms or buy anything. You do the purchase.
 
-> **100% open source.** Copy it, fork it, modify it. All I ask (and the MIT license requires) is to keep the copyright notice; a link back and a "thanks" are welcome but optional.
+> **Free to use and share — not to sell.** Personal use and free sharing are welcome, and you may modify it. Commercial use, resale or presenting it as your own product are not allowed. Keep the copyright notice and credit the original project.
 
 ![Main window](docs/app.png)
 
@@ -38,13 +38,13 @@ If a site cannot be read, the row shows **ERROR** and the log says why (`sin-tal
 3. Double click. The first time it asks you to add a product.
 4. Paste the product URL, hit **Buscar tallas**, pick sizes and press **INICIAR**.
 
-Requirements: **Windows 10/11 64-bit** and **Microsoft Edge** (bundled with Windows). Brave is optional; without it the alert opens in your default browser.
+Requirements: **Windows 10/11 64-bit** and a Chromium browser: **Edge** (bundled with Windows), **Chrome** or **Brave**. The hidden monitor uses the first one it finds; the alert tab opens in Brave, or in your default browser if Brave is missing.
 
 > The executable is not signed, so SmartScreen may warn once: *More info → Run anyway*.
 
 ## Where data is stored
 
-Portable: `config.json`, `logs/` and the internal Edge profile are stored **next to the exe** if the folder is writable. Otherwise it uses `%LOCALAPPDATA%\InditexStockAlarm`.
+Portable: `config.json`, `logs/` and the internal browser profile are stored **next to the exe** if the folder is writable. Otherwise it uses `%LOCALAPPDATA%\InditexStockAlarm`.
 
 ## Features
 
@@ -145,11 +145,11 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 
 ## Attribution
 
-If you copy or redistribute this project (or a modified version), keep the `LICENSE` file with the copyright notice. A link to the original repo and a “thanks” are appreciated but not required.
+If you copy or redistribute this project (or a modified version), keep the `LICENSE` file with the copyright notice, credit the original project and do not present it as your own or sell it. A link back to the original repository is required where reasonably possible.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Source-available, non-commercial. See [LICENSE](LICENSE). Personal use and free sharing are allowed; commercial use, resale and claiming it as your own are not.
 
 ---
 
@@ -161,7 +161,7 @@ Aplicación de escritorio para Windows que vigila las tallas que elijas en **fic
 
 > **Solo es una alarma.** No añade a la cesta, no rellena datos y no compra nada. La compra la haces tú.
 
-> **100% abierto.** Puedes copiarlo, forkerlo y modificarlo. Solo pido (y la licencia MIT exige) mantener el aviso de copyright; un enlace y un “gracias” se agradecen, pero no son obligatorios.
+> **Gratis para uso personal y para compartir, pero no para vender.** Puedes usarlo, modificarlo y compartirlo gratis. No se permite el uso comercial, la reventa ni presentarlo como producto propio. Mantén el aviso de copyright y da crédito al proyecto original.
 
 ![Ventana principal](docs/app.png)
 
@@ -187,13 +187,13 @@ Si una web no se puede leer, la fila muestra **ERROR** y el log indica el motivo
 3. Doble clic. La primera vez te pide añadir un producto.
 4. Pega la URL, pulsa **Buscar tallas**, elige tallas y dale a **INICIAR**.
 
-Requisitos: **Windows 10/11 de 64 bits** y **Microsoft Edge** (viene con Windows). Brave es opcional; si no está, el aviso se abre en tu navegador por defecto.
+Requisitos: **Windows 10/11 de 64 bits** y un navegador Chromium: **Edge** (incluido en Windows), **Chrome** o **Brave**. El monitor oculto usa el primero que encuentre; la pestaña del aviso se abre en Brave, o en tu navegador por defecto si no está.
 
 > El ejecutable no está firmado, así que SmartScreen puede avisar una vez: *Más información → Ejecutar de todas formas*.
 
 ## Dónde guarda los datos
 
-Portable: `config.json`, `logs/` y el perfil interno de Edge se guardan **junto al .exe** si la carpeta permite escribir. Si no, usa `%LOCALAPPDATA%\InditexStockAlarm`.
+Portable: `config.json`, `logs/` y el perfil interno del navegador se guardan **junto al .exe** si la carpeta permite escribir. Si no, usa `%LOCALAPPDATA%\InditexStockAlarm`.
 
 ## Qué hace
 
@@ -294,8 +294,8 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 
 ## Atribución
 
-Si copias o redistribuyes este proyecto (o una versión modificada), mantén el archivo `LICENSE` con el aviso de copyright. Un enlace al repo original y un “gracias” se agradecen, pero no son obligatorios.
+Si copias o redistribuyes este proyecto (o una versión modificada), mantén el archivo `LICENSE` con el aviso de copyright, da crédito al proyecto original y no lo presentes como propio ni lo vendas. Un enlace al repositorio original es obligatorio cuando sea razonablemente posible.
 
 ## Licencia
 
-MIT. Ver [LICENSE](LICENSE).
+Source-available, no comercial. Ver [LICENSE](LICENSE). Se permite el uso personal y compartirlo gratis; no se permite el uso comercial, la reventa ni presentarlo como propio.
