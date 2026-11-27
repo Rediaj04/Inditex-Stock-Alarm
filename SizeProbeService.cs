@@ -22,6 +22,7 @@ internal static class SizeProbeService
                 ItemUrl.TryParse(url, out var colorId, out _);
 
                 // 1) Intento por API (funciona incluso si la web no pinta las tallas)
+                string? apiReason = null;
                 try
                 {
                     var apiValue = await page.EvaluateAsync(
@@ -38,10 +39,12 @@ internal static class SizeProbeService
                                 .ToList()
                         };
                     }
+
+                    apiReason = api?.Reason ?? "sin-datos";
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // seguimos con DOM
+                    apiReason = ex.Message;
                 }
 
                 // 2) Fallback: leer las tallas del DOM
@@ -52,10 +55,13 @@ internal static class SizeProbeService
                     MonitorScripts.ListSizesScript(), 45000, CancellationToken.None);
                 var json = value?.GetString();
                 if (string.IsNullOrEmpty(json))
-                    return new SizeProbeResult { Reason = "respuesta vacía" };
+                    return new SizeProbeResult { Reason = "respuesta vacía (api: " + apiReason + ")" };
 
-                return JsonSerializer.Deserialize<SizeProbeResult>(json, JsonOpts)
-                       ?? new SizeProbeResult { Reason = "respuesta no válida" };
+                var dom = JsonSerializer.Deserialize<SizeProbeResult>(json, JsonOpts);
+                if (dom is not null && !dom.Ok && apiReason is not null)
+                    dom.Reason = (dom.Reason ?? "sin-tallas") + " | api: " + apiReason;
+
+                return dom ?? new SizeProbeResult { Reason = "respuesta no válida" };
             }
             finally
             {

@@ -151,11 +151,11 @@ internal static class MonitorScripts
 
   let storeId = null;
   for (const n of performance.getEntriesByType('resource').map(function (e) { return e.name; })) {
-    const m = n.match(/\/catalog\/store\/(\d+)/);
+    const m = n.match(/\/store\/(\d{5,})/);
     if (m) { storeId = m[1]; break; }
   }
   if (!storeId) {
-    const m = document.documentElement.innerHTML.match(/"storeId"\s*:\s*"?(\d{5,})/);
+    const m = document.documentElement.innerHTML.match(/"storeId"\s*:\s*\[?\s*"?(\d{5,})/);
     if (m) storeId = m[1];
   }
   if (!storeId) return JSON.stringify({ ok: false, reason: 'sin-store' });
@@ -174,13 +174,37 @@ internal static class MonitorScripts
 
   const colorId = colorHint || q.get('colorId') || q.get('cS') || '';
 
-  async function detail(pid) {
-    const url = '/itxrest/2/catalog/store/' + storeId + '/0/category/0/product/' + pid + '/detail?languageId=-5&appId=1';
+  let catalogId = '0';
+
+  async function rawDetail(pid, cat) {
+    const url = '/itxrest/2/catalog/store/' + storeId + '/' + cat + '/category/0/product/' + pid + '/detail?languageId=-5&appId=1';
     try {
       const r = await fetch(url, { headers: { accept: 'application/json' } });
       if (!r.ok) return null;
       return await r.json();
     } catch (e) { return null; }
+  }
+
+  async function detail(pid) {
+    let j = await rawDetail(pid, catalogId);
+    if (j) return j;
+
+    if (catalogId === '0') {
+      try {
+        const r = await fetch('/itxrest/2/catalog/store/' + storeId + '?languageId=-5&appId=1',
+          { headers: { accept: 'application/json' } });
+        if (r.ok) {
+          const store = await r.json();
+          const c = (store.catalogs || [])[0];
+          if (c && c.id) {
+            catalogId = String(c.id);
+            j = await rawDetail(pid, catalogId);
+          }
+        }
+      } catch (e) { /* seguimos */ }
+    }
+
+    return j;
   }
 
   function aggregate(colors) {
