@@ -231,11 +231,32 @@ internal static class MonitorScripts
 
   let colors = (j.detail && j.detail.colors) || [];
   if (!colors.length) {
-    const alt = j.alternativeProductId || ((j.bundleProductSummaries || [])[0] || {}).id;
-    if (!alt) return JSON.stringify({ ok: false, reason: 'sin-colores' });
-    j = await detail(alt);
-    if (!j) return JSON.stringify({ ok: false, reason: 'api-http' });
-    colors = (j.detail && j.detail.colors) || [];
+    const candidates = [];
+    for (const s of (j.bundleProductSummaries || [])) if (s.id) candidates.push(s.id);
+    if (j.alternativeProductId) candidates.push(j.alternativeProductId);
+
+    for (const alt of candidates) {
+      if (String(alt) === String(productId)) continue;
+
+      const j2 = await detail(alt);
+      if (!j2) continue;
+
+      let c2 = (j2.detail && j2.detail.colors) || [];
+      if (c2.length) { j = j2; colors = c2; break; }
+
+      const nested = [];
+      for (const s of (j2.bundleProductSummaries || [])) if (s.id) nested.push(s.id);
+      if (j2.alternativeProductId) nested.push(j2.alternativeProductId);
+
+      for (const n of nested) {
+        const j3 = await detail(n);
+        if (!j3) continue;
+        const c3 = (j3.detail && j3.detail.colors) || [];
+        if (c3.length) { j = j3; colors = c3; break; }
+      }
+
+      if (colors.length) break;
+    }
   }
   if (!colors.length) return JSON.stringify({ ok: false, reason: 'sin-colores' });
 
