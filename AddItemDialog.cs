@@ -157,7 +157,8 @@ public sealed class AddItemDialog : Form
             ForeColor = Color.White,
             BorderStyle = BorderStyle.FixedSingle,
             Font = new Font("Consolas", 10f),
-            Text = "44"
+            Text = "",
+            PlaceholderText = "44, M, L…"
         };
 
         _name = new TextBox
@@ -342,5 +343,11 @@ public sealed class AddItemDialog : Form
         }
 
         DialogResult = DialogResult.OK;
+    }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        Ui.CenterOnOwner(this);
     }
 }

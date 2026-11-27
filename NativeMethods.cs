@@ -73,6 +73,27 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     private static extern bool IsWindowVisible(IntPtr hWnd);
 
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
+
+    private const uint SwpNoZOrder = 0x0004;
+    private const uint SwpShowWindow = 0x0040;
+
+    public static void MoveWindow(IntPtr hWnd, Rectangle bounds)
+    {
+        try
+        {
+            ShowWindow(hWnd, 9); // restore
+            SetWindowPos(hWnd, IntPtr.Zero, bounds.Left, bounds.Top, bounds.Width, bounds.Height,
+                SwpNoZOrder | SwpShowWindow);
+            ShowWindow(hWnd, 3); // maximize on the target monitor
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr param);
 
     public static IntPtr FindWindowByTitle(string contains)

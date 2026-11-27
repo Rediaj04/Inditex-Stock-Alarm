@@ -14,6 +14,7 @@ internal static class Loc
         ["seg"] = "sec",
         ["Probar"] = "Test",
         ["Ajustes"] = "Settings",
+        ["Abrir web"] = "Open web",
         ["Silenciar"] = "Silence",
         ["Quitar snooze"] = "Cancel snooze",
         ["Sonido: ON"] = "Sound: ON",

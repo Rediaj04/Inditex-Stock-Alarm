@@ -37,6 +37,7 @@ public sealed class MainForm : Form
     private bool _soundEnabled;
     private bool _allowFast;
     private bool _schedulePaused;
+    private bool _moveBraveToScreen;
     private string? _updateTag;
     private bool _updatePrompted;
 
@@ -97,6 +98,19 @@ public sealed class MainForm : Form
         _focusBrave.Tick += (_, _) =>
         {
             _focusBrave.Stop();
+
+            if (_moveBraveToScreen && _config.AlertScreen >= 0)
+            {
+                var screens = Screen.AllScreens;
+                var screen = _config.AlertScreen < screens.Length ? screens[_config.AlertScreen] : Screen.PrimaryScreen;
+                var hWnd = NativeMethods.FindWindowByTitle("Brave");
+
+                if (hWnd != IntPtr.Zero && screen is not null)
+                    NativeMethods.MoveWindow(hWnd, screen.WorkingArea);
+
+                _moveBraveToScreen = false;
+            }
+
             NativeMethods.FocusWindow("Brave");
         };
 
@@ -382,7 +396,7 @@ public sealed class MainForm : Form
         var btnTest = MakeButton("Probar", Palette.Chip, Palette.Text, 84);
         btnTest.Click += (_, _) => TestAlert();
 
-        var btnBrave = MakeButton("Brave", Palette.Chip, Palette.Text, 80);
+        var btnBrave = MakeButton("Abrir web", Palette.Chip, Palette.Text, 96);
         btnBrave.Click += (_, _) => OpenAvailableInBrave();
 
         var btnSettings = MakeButton("Ajustes", Palette.Chip, Palette.Text, 84);
@@ -1728,7 +1742,7 @@ public sealed class MainForm : Form
         else Ui();
 
         if (transition && _config.OpenInBrave)
-            OpenInBrave(item.Config.Url);
+            OpenInBrave(item.Config.Url, moveToAlertScreen: true);
 
         await Task.CompletedTask;
     }
@@ -1750,7 +1764,7 @@ public sealed class MainForm : Form
                 form.OpenRequested += (_, _) =>
                 {
                     foreach (var url in form.Urls.Distinct(StringComparer.OrdinalIgnoreCase))
-                        OpenInBrave(url);
+                        OpenInBrave(url, moveToAlertScreen: true);
 
                     _alarm.Silence();
                     _btnSilence.Enabled = false;
@@ -1821,7 +1835,7 @@ public sealed class MainForm : Form
         if (urls.Count > 0)
         {
             foreach (var url in urls.Distinct(StringComparer.OrdinalIgnoreCase))
-                OpenInBrave(url);
+                OpenInBrave(url, moveToAlertScreen: true);
 
             Log("Aviso confirmado: abriendo la ficha en Brave. ¡Suerte!", LogKind.Ok);
         }
@@ -1888,8 +1902,9 @@ public sealed class MainForm : Form
         });
     }
 
-    private void OpenInBrave(string url)
-    {        try
+    private void OpenInBrave(string url, bool moveToAlertScreen = false)
+    {
+        try
         {
             var brave = FindBrave();
             if (brave is not null)
@@ -1898,6 +1913,7 @@ public sealed class MainForm : Form
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
             Log("Pestaña abierta en Brave: " + url, LogKind.Ok);
+            _moveBraveToScreen = moveToAlertScreen;
             _focusBrave.Stop();
             _focusBrave.Start();
         }
