@@ -17,8 +17,11 @@ public sealed class MainForm : Form
     private readonly NotifyIcon _tray;
     private readonly System.Windows.Forms.Timer _alertReset = new() { Interval = 46000 };
     private readonly System.Windows.Forms.Timer _focusBrave = new() { Interval = 1600 };
-    private readonly System.Windows.Forms.Timer _snoozeTimer = new() { Interval = 30 * 60 * 1000 };
+    private readonly System.Windows.Forms.Timer _snoozeTick = new() { Interval = 1000 };
     private long _snoozeUntilTicks;
+    private Icon? _iconNormal;
+    private Icon? _iconAlert;
+    private string? _lastAlertUrl;
     private float _uiScale = 1f;
     private static readonly HttpClient ThumbHttp = new() { Timeout = TimeSpan.FromSeconds(10) };
     private readonly Dictionary<string, Image> _thumbCache = new();
@@ -93,6 +96,7 @@ public sealed class MainForm : Form
             _alertReset.Stop();
             if (_cts is not null) SetPill("● VIGILANDO", Palette.Green, Palette.GreenBg);
             _btnSilence.Enabled = false;
+            SetTrayAlert(false);
         };
 
         _focusBrave.Tick += (_, _) =>
@@ -114,12 +118,18 @@ public sealed class MainForm : Form
             NativeMethods.FocusWindow("Brave");
         };
 
-        _snoozeTimer.Tick += (_, _) =>
+        _snoozeTick.Tick += (_, _) =>
         {
-            _snoozeTimer.Stop();
-            _btnSnooze.Text = Loc.T("Snooze 30m", "Snooze 30m");
-            if (_cts is not null) SetPill("● VIGILANDO", Palette.Green, Palette.GreenBg);
-            Log("Snooze terminado: vuelven los avisos.", LogKind.Info);
+            if (_snoozeUntilTicks <= DateTime.UtcNow.Ticks)
+            {
+                EndSnooze();
+                return;
+            }
+
+            var remaining = TimeSpan.FromTicks(_snoozeUntilTicks - DateTime.UtcNow.Ticks);
+            _btnSnooze.Text = Loc.T(
+                $"Quitar snooze · {remaining:mm\\:ss}",
+                $"Cancel snooze · {remaining:mm\\:ss}");
         };
 
         FormClosing += OnFormClosing;
@@ -698,14 +708,22 @@ public sealed class MainForm : Form
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(Loc.T("Salir", "Exit"), null, (_, _) => Close());
 
+        _iconNormal = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Information;
+        _iconAlert = SystemIcons.Warning;
+
         var tray = new NotifyIcon
         {
-            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Information,
+            Icon = _iconNormal,
             Text = "Inditex · Alarma de stock",
             Visible = true,
             ContextMenuStrip = menu
         };
         tray.DoubleClick += (_, _) => ShowFromTray();
+        tray.BalloonTipClicked += (_, _) =>
+        {
+            if (!string.IsNullOrWhiteSpace(_lastAlertUrl))
+                OpenInBrave(_lastAlertUrl!, moveToAlertScreen: true);
+        };
         return tray;
     }
 
@@ -875,21 +893,44 @@ public sealed class MainForm : Form
         if (_snoozeUntilTicks > DateTime.UtcNow.Ticks)
         {
             _snoozeUntilTicks = 0;
-            _snoozeTimer.Stop();
+            _snoozeTick.Stop();
             _btnSnooze.Text = Loc.T("Snooze 30m", "Snooze 30m");
             if (_cts is not null) SetPill("● VIGILANDO", Palette.Green, Palette.GreenBg);
             Log("Snooze cancelado: vuelven los avisos.", LogKind.Info);
+            SetTrayAlert(false);
             return;
         }
 
         _snoozeUntilTicks = DateTime.UtcNow.AddMinutes(30).Ticks;
         _alarm.Silence();
         _btnSilence.Enabled = false;
-        _btnSnooze.Text = Loc.T("Quitar snooze", "Cancel snooze");
+        _snoozeTick.Stop();
+        _snoozeTick.Start();
+        _btnSnooze.Text = Loc.T("Quitar snooze · 30:00", "Cancel snooze · 30:00");
         if (_cts is not null) SetPill("● SNOOZE 30 MIN", Palette.Amber, Palette.AmberBg);
         Log($"Avisos silenciados hasta las {DateTime.Now.AddMinutes(30):HH:mm} (la vigilancia sigue).", LogKind.Warn);
-        _snoozeTimer.Stop();
-        _snoozeTimer.Start();
+    }
+
+    private void EndSnooze()
+    {
+        _snoozeTick.Stop();
+        _snoozeUntilTicks = 0;
+        _btnSnooze.Text = Loc.T("Snooze 30m", "Snooze 30m");
+        if (_cts is not null) SetPill("● VIGILANDO", Palette.Green, Palette.GreenBg);
+        SetTrayAlert(false);
+        Log("Snooze terminado: vuelven los avisos.", LogKind.Info);
+    }
+
+    private void SetTrayAlert(bool alert)
+    {
+        try
+        {
+            _tray.Icon = alert ? _iconAlert : _iconNormal;
+        }
+        catch
+        {
+            // ignored
+        }
     }
 
     private void PauseUrls(IReadOnlyList<string> urls)
@@ -1734,7 +1775,11 @@ public sealed class MainForm : Form
             _alertReset.Stop();
             _alertReset.Start();
             NativeMethods.Flash(Handle);
-            _tray.ShowBalloonTip(15000, "¡HAY STOCK!", $"{item.DisplayName}\nPulsa el botón grande del aviso.",
+            _lastAlertUrl = item.Config.Url;
+            SetTrayAlert(true);
+            _tray.ShowBalloonTip(15000,
+                Loc.T("¡HAY STOCK!", "IN STOCK!"),
+                $"{item.DisplayName}\n" + Loc.T("Haz clic aquí para abrir la ficha.", "Click here to open the product."),
                 ToolTipIcon.Warning);
         }
 
@@ -1857,6 +1902,7 @@ public sealed class MainForm : Form
         _alarm.Silence();
         _btnSilence.Enabled = false;
         _muteUntilTicks = DateTime.UtcNow.AddMinutes(5).Ticks;
+        SetTrayAlert(false);
 
         if (test)
         {

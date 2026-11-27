@@ -55,7 +55,7 @@ Portable: `config.json`, `logs/` and the internal browser profile are stored **n
 - 15 s minimum interval with a **lock**: unlocking it below 15 s shows a red warning about the risks.
 - **Backoff** on failures (30→60→120→180 s) and a **watchdog** that restarts Edge if it dies.
 - **Alert window** with a large product image, price, big OK, **Open product** and **Already bought · pause** buttons; the siren keeps playing until you act.
-- **Snooze 30 min** (the same button cancels it), **pause per product**, and “already bought → pause this product”.
+- **Snooze 30 min** (the button shows a countdown and cancels it), **pause per product**, and “already bought → pause this product”. The tray icon switches to an alert state and **clicking the Windows notification opens the product**.`n
 - **Settings**: sound mode (siren+voice / siren / voice / beep / **your own WAV-MP3-WMA**), ntfy push with a test button, schedule, gentle mode, **start with Windows**, **start minimised**, **alert screen (detects your monitors and moves Brave there on alerts)**, **UI scale (100/125/150 %)**, **language (Spanish/English)**, **browser cache limit and Clear cache** and dark/light theme.
 - Tray tooltip with the current status. Prevents Windows from sleeping while watching.
 - Optional **update notice** (not forced) when a newer GitHub Release exists.
@@ -228,7 +228,7 @@ Portable: `config.json`, `logs/` y el perfil interno del navegador se guardan **
 - Intervalo mínimo de 15 s con **candado**: si lo desbloqueas por debajo de 15 s sale un aviso rojo con los riesgos.
 - **Backoff** ante fallos (30→60→120→180 s) y **watchdog** que reinicia Edge si se cae.
 - **Ventana de aviso** con imagen grande, precio, botón OK, **Abrir ficha** y **Ya he comprado · pausar**; la sirena no para hasta que actúes.
-- **Snooze 30 min** (el mismo botón lo cancela), **pausar por producto** y “ya he comprado → pausar este producto”.
+- **Snooze 30 min** (el botón muestra la cuenta atrás y lo cancela), **pausar por producto** y “ya he comprado → pausar este producto”. El icono de la bandeja cambia a estado de aviso y **al hacer clic en la notificación de Windows se abre la ficha**.`n
 - **Ajustes**: modo de sonido (sirena+voz / sirena / voz / pitido / **tu propio WAV-MP3-WMA**), ntfy con botón de prueba, horario, modo suave, **inicio con Windows**, **arrancar minimizada**, **pantalla de la alerta (detecta tus pantallas y mueve Brave allí)**, **escala de interfaz (100/125/150 %)**, **idioma (español/inglés)**, **límite de caché y Limpiar caché** y tema oscuro/claro.
 - Tooltip en la bandeja con el estado actual. Impide que Windows entre en suspensión mientras vigila.
 - **Aviso de actualización** opcional (no obligatorio) si hay un Release nuevo.
