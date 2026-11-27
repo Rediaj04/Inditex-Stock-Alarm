@@ -39,6 +39,7 @@ public sealed class MainForm : Form
 
     private Label _pill = null!;
     private Label _foot = null!;
+    private Panel _content = null!;
     private Button _btnToggle = null!;
     private Button _btnSilence = null!;
     private Button _btnSound = null!;
@@ -109,16 +110,6 @@ public sealed class MainForm : Form
     {
         base.OnHandleCreated(e);
         NativeMethods.DarkTitleBar(Handle);
-    }
-
-    protected override void OnResize(EventArgs e)
-    {
-        base.OnResize(e);
-        if (WindowState == FormWindowState.Minimized)
-        {
-            Hide();
-            _tray.ShowBalloonTip(2500, "Inditex Stock Alarm", "Sigue vigilando en segundo plano.", ToolTipIcon.Info);
-        }
     }
 
     private async void OnShown(object? sender, EventArgs e)
@@ -199,8 +190,8 @@ public sealed class MainForm : Form
     {
         SuspendLayout();
         Text = "Inditex · Alarma de stock";
-        ClientSize = new Size(1100, 800);
-        MinimumSize = new Size(720, 560);
+        ClientSize = new Size(1120, 800);
+        MinimumSize = new Size(760, 600);
         BackColor = Palette.Bg;
         ForeColor = Palette.Text;
         Font = new Font("Segoe UI", 9.75f);
@@ -214,19 +205,43 @@ public sealed class MainForm : Form
             BackColor = Palette.Bg
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 44));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 56));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 200));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
 
         root.Controls.Add(BuildHeader(), 0, 0);
         root.Controls.Add(BuildControls(), 0, 1);
         root.Controls.Add(BuildItems(), 0, 2);
         root.Controls.Add(BuildLogPanel(), 0, 3);
         root.Controls.Add(BuildFooter(), 0, 4);
-        Controls.Add(root);
+
+        _content = new Panel { BackColor = Palette.Bg };
+        _content.Controls.Add(root);
+        Controls.Add(_content);
+        PositionContent();
         ResumeLayout();
+    }
+
+    private void PositionContent()
+    {
+        if (_content is null) return;
+
+        var width = Math.Min(1120, Math.Max(600, ClientSize.Width - 32));
+        _content.Bounds = new Rectangle((ClientSize.Width - width) / 2, 0, width, ClientSize.Height);
+    }
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        PositionContent();
+
+        if (WindowState == FormWindowState.Minimized)
+        {
+            Hide();
+            _tray.ShowBalloonTip(2500, "Inditex Stock Alarm", "Sigue vigilando en segundo plano.", ToolTipIcon.Info);
+        }
     }
 
     private Control BuildHeader()
@@ -235,17 +250,19 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
+            RowCount = 1,
             BackColor = Palette.Bg,
-            Padding = new Padding(20, 16, 20, 6)
+            Padding = new Padding(20, 14, 20, 4)
         };
+        header.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 310));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250));
 
         var left = new Panel { Dock = DockStyle.Fill, BackColor = Palette.Bg };
         left.Controls.Add(new Label
         {
             Text = "Inditex · Alarma de stock",
-            Font = new Font("Segoe UI Semibold", 15f),
+            Font = new Font("Segoe UI Semibold", 14.5f),
             ForeColor = Palette.Text,
             AutoSize = true,
             Location = new Point(0, 2)
@@ -258,7 +275,7 @@ public sealed class MainForm : Form
             ForeColor = Palette.Muted,
             AutoSize = false,
             AutoEllipsis = true,
-            Location = new Point(2, 36),
+            Location = new Point(2, 32),
             Size = new Size(420, 18)
         };
         left.Controls.Add(subtitle);
@@ -269,10 +286,10 @@ public sealed class MainForm : Form
         _pill = new Label
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(0, 8, 0, 8),
+            Margin = new Padding(0, 4, 0, 4),
             Text = "● DETENIDO",
             TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font("Segoe UI Semibold", 11f),
+            Font = new Font("Segoe UI Semibold", 9.5f),
             ForeColor = Palette.Muted,
             BackColor = Palette.Chip
         };
@@ -288,11 +305,11 @@ public sealed class MainForm : Form
             BackColor = Palette.Bg,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Padding = new Padding(18, 8, 18, 8),
+            Padding = new Padding(20, 8, 20, 8),
             WrapContents = true
         };
 
-        _btnToggle = MakeButton("▶  INICIAR", Palette.Green, Color.FromArgb(8, 28, 17), 180);
+        _btnToggle = MakeButton("▶  INICIAR", Palette.Green, Color.FromArgb(8, 28, 17), 142);
         _btnToggle.Click += async (_, _) =>
         {
             if (_cts is null) await StartMonitorAsync();
@@ -328,12 +345,12 @@ public sealed class MainForm : Form
             Margin = new Padding(0, 16, 0, 0)
         };
 
-        _btnLock = MakeButton(_allowFast ? "🔓 mín. 5 s" : "🔒 mín. 15 s", Palette.Chip, Palette.Text, 128);
+        _btnLock = MakeButton(_allowFast ? "🔓 mín. 5 s" : "🔒 mín. 15 s", Palette.Chip, Palette.Text, 104);
         _btnLock.Margin = new Padding(8, 0, 10, 0);
         _btnLock.ForeColor = _allowFast ? Palette.Amber : Palette.Muted;
         _btnLock.Click += (_, _) => ToggleFast();
 
-        _btnSound = MakeButton("", Palette.Chip, Palette.Text, 150);
+        _btnSound = MakeButton("", Palette.Chip, Palette.Text, 124);
         _btnSound.Margin = new Padding(14, 0, 10, 0);
         _btnSound.Click += (_, _) =>
         {
@@ -346,19 +363,19 @@ public sealed class MainForm : Form
         };
         ApplySoundState();
 
-        var btnTest = MakeButton("Probar aviso", Palette.Chip, Palette.Text, 128);
+        var btnTest = MakeButton("Probar", Palette.Chip, Palette.Text, 84);
         btnTest.Click += (_, _) => TestAlert();
 
-        var btnBrave = MakeButton("Abrir en Brave", Palette.Chip, Palette.Text, 142);
+        var btnBrave = MakeButton("Brave", Palette.Chip, Palette.Text, 80);
         btnBrave.Click += (_, _) => OpenAvailableInBrave();
 
-        var btnSettings = MakeButton("⚙ Ajustes", Palette.Chip, Palette.Text, 106);
+        var btnSettings = MakeButton("Ajustes", Palette.Chip, Palette.Text, 84);
         btnSettings.Click += (_, _) => OpenSettings();
 
-        _btnSnooze = MakeButton("Snooze 30m", Palette.Chip, Palette.Text, 118);
+        _btnSnooze = MakeButton("Snooze", Palette.Chip, Palette.Text, 84);
         _btnSnooze.Click += (_, _) => Snooze();
 
-        _btnSilence = MakeButton("Silenciar", Palette.Red, Color.White, 105);
+        _btnSilence = MakeButton("Silenciar", Palette.Chip, Palette.Red, 84);
         _btnSilence.Enabled = false;
         _btnSilence.Click += (_, _) =>
         {
@@ -366,16 +383,7 @@ public sealed class MainForm : Form
             _btnSilence.Enabled = false;
         };
 
-        var hint = new Label
-        {
-            Text = "Mín. 15 s · PC sin suspensión",
-            AutoSize = true,
-            ForeColor = Palette.Muted,
-            Font = new Font("Segoe UI", 8.5f),
-            Margin = new Padding(10, 16, 0, 0)
-        };
-
-        bar.Controls.AddRange(new Control[] { _btnToggle, _num, lblSeg, _btnLock, _btnSound, btnTest, btnBrave, btnSettings, _btnSnooze, _btnSilence, hint });
+        bar.Controls.AddRange(new Control[] { _btnToggle, _num, lblSeg, _btnLock, _btnSound, btnTest, btnBrave, btnSettings, _btnSnooze, _btnSilence });
         return bar;
     }
 
@@ -383,7 +391,7 @@ public sealed class MainForm : Form
     {
         _alarm.Enabled = _soundEnabled;
         _btnSound.Text = _soundEnabled ? "Sonido: ON" : "Sonido: OFF";
-        _btnSound.BackColor = _soundEnabled ? Palette.GreenBg : Palette.Chip;
+        _btnSound.BackColor = Palette.Chip;
         _btnSound.ForeColor = _soundEnabled ? Palette.Green : Palette.Muted;
     }
 
@@ -527,7 +535,7 @@ public sealed class MainForm : Form
         add.Click += (_, _) => AddItem();
         head.Controls.Add(add);
 
-        _btnStartup = MakeButton("", Palette.Chip, Palette.Muted, 186);
+        _btnStartup = MakeButton("", Palette.Chip, Palette.Muted, 212);
         _btnStartup.Height = 26;
         _btnStartup.Font = new Font("Segoe UI Semibold", 9f);
         _btnStartup.Click += (_, _) => ToggleStartup();
@@ -582,7 +590,7 @@ public sealed class MainForm : Form
             BackColor = Palette.LogBg,
             ForeColor = Palette.Text,
             Font = new Font("Consolas", 9f),
-            WordWrap = false,
+            WordWrap = true,
             DetectUrls = false,
             ScrollBars = RichTextBoxScrollBars.Vertical
         };
@@ -679,13 +687,13 @@ public sealed class MainForm : Form
         {
             Text = text,
             Width = width,
-            Height = 40,
+            Height = 36,
             BackColor = back,
             ForeColor = fore,
             FlatStyle = FlatStyle.Flat,
-            Font = new Font("Segoe UI Semibold", 9.75f),
+            Font = new Font("Segoe UI Semibold", 9.25f),
             Cursor = Cursors.Hand,
-            Margin = new Padding(0, 0, 10, 0),
+            Margin = new Padding(0, 0, 8, 0),
             TabStop = true,
             AccessibleRole = AccessibleRole.PushButton,
             AccessibleName = text
@@ -987,7 +995,8 @@ public sealed class MainForm : Form
         menu.Click += (_, _) => ShowItemMenu(item, menu);
 
         panel.Controls.AddRange(new Control[] { name, sub, status, menu, remove });
-        panel.Resize += (_, _) =>
+
+        void LayoutRow()
         {
             var width = panel.ClientSize.Width;
             var removeX = Math.Max(40, width - remove.Width - 10);
@@ -1002,7 +1011,10 @@ public sealed class MainForm : Form
                 Math.Max(0, (panel.Height - statusHeight) / 2),
                 Math.Max(80, menu.Left - statusX - 10),
                 statusHeight);
-        };
+        }
+
+        panel.Resize += (_, _) => LayoutRow();
+        LayoutRow();
 
         _rows[item.Config.Url] = new ItemRow(name, sub, status, panel, remove, menu);
         return panel;
