@@ -18,25 +18,36 @@ public sealed class AppConfig
     public string Theme { get; set; } = "dark";
     public List<ItemConfig> Items { get; set; } = new();
 
-    private static readonly JsonSerializerOptions WriteOpts = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions WriteOpts = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
     private static readonly JsonSerializerOptions ReadOpts = new() { PropertyNameCaseInsensitive = true };
 
     public static string PathFor(string dir) => Path.Combine(dir, "config.json");
 
     public static AppConfig Load(string dir)
     {
+        var path = PathFor(dir);
+        if (!File.Exists(path)) return new AppConfig();
+
         try
         {
-            var path = PathFor(dir);
-            if (File.Exists(path))
-            {
-                var cfg = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(path), ReadOpts);
-                if (cfg is not null) return cfg;
-            }
+            var cfg = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(path), ReadOpts);
+            if (cfg is not null) return cfg;
         }
         catch
         {
-            // configuración corrupta: se usa la de por defecto
+            // Si el JSON está corrupto, guardamos una copia antes de continuar.
+            try
+            {
+                File.Copy(path, path + ".bad", true);
+            }
+            catch
+            {
+                // ignored
+            }
         }
 
         return new AppConfig();
