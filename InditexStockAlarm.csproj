@@ -9,7 +9,7 @@
     <AssemblyName>InditexStockAlarm</AssemblyName>
     <RootNamespace>InditexStockAlarm</RootNamespace>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <Version>1.4.2</Version>
+    <Version>1.4.3</Version>
     <Product>Inditex Stock Alarm</Product>
     <Company>Inditex Stock Alarm contributors</Company>
     <Description>Vigila tallas de cualquier ficha de Inditex y avisa con alarma, ventana emergente y pestaña en Brave.</Description>

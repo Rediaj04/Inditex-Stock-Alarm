@@ -73,4 +73,10 @@ public sealed class FastIntervalDialog : Form
         CancelButton = cancel;
         Loc.Apply(this);
     }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        Ui.CenterOnOwner(this);
+    }
 }

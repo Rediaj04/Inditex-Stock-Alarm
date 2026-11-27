@@ -112,7 +112,8 @@ static class Program
                 "PRUEBA · Jeans barrel",
                 "Azul lavado · tallas 44",
                 "17,99 €",
-                "https://www.bershka.com/es/jeans-barrel-c0p229733871.html?colorId=428");
+                "https://www.bershka.com/es/jeans-barrel-c0p229733871.html?colorId=428",
+                null);
 
             var form = new AlertForm();
             form.AddItem(sample);

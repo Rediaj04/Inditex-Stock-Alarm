@@ -453,4 +453,10 @@ public sealed class SettingsDialog : Form
 
         DialogResult = DialogResult.OK;
     }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        Ui.CenterOnOwner(this);
+    }
 }

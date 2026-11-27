@@ -79,4 +79,10 @@ public sealed class UpdateDialog : Form
         AcceptButton = open;
         CancelButton = later;
     }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        Ui.CenterOnOwner(this);
+    }
 }
