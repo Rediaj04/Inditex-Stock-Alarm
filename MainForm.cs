@@ -19,8 +19,11 @@ public sealed class MainForm : Form
     private readonly System.Windows.Forms.Timer _focusBrave = new() { Interval = 1600 };
     private readonly System.Windows.Forms.Timer _snoozeTick = new() { Interval = 1000 };
     private long _snoozeUntilTicks;
-    private Icon? _iconNormal;
-    private Icon? _iconAlert;
+    private Icon? _trayStopped;
+    private Icon? _trayRunning;
+    private Icon? _trayAlert;
+    private Icon? _traySnooze;
+    private bool _trayAlerting;
     private string? _lastAlertUrl;
     private float _uiScale = 1f;
     private static readonly HttpClient ThumbHttp = new() { Timeout = TimeSpan.FromSeconds(10) };
@@ -708,12 +711,14 @@ public sealed class MainForm : Form
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(Loc.T("Salir", "Exit"), null, (_, _) => Close());
 
-        _iconNormal = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Information;
-        _iconAlert = SystemIcons.Warning;
+        _trayStopped = TrayIcons.Create(Color.FromArgb(122, 132, 153));
+        _trayRunning = TrayIcons.Create(Color.FromArgb(64, 214, 128));
+        _trayAlert = TrayIcons.Create(Color.FromArgb(255, 77, 109));
+        _traySnooze = TrayIcons.Create(Color.FromArgb(246, 173, 60));
 
         var tray = new NotifyIcon
         {
-            Icon = _iconNormal,
+            Icon = _trayStopped,
             Text = "Inditex · Alarma de stock",
             Visible = true,
             ContextMenuStrip = menu
@@ -907,6 +912,7 @@ public sealed class MainForm : Form
         _snoozeTick.Stop();
         _snoozeTick.Start();
         _btnSnooze.Text = Loc.T("Quitar snooze · 30:00", "Cancel snooze · 30:00");
+        RefreshTrayIcon();
         if (_cts is not null) SetPill("● SNOOZE 30 MIN", Palette.Amber, Palette.AmberBg);
         Log($"Avisos silenciados hasta las {DateTime.Now.AddMinutes(30):HH:mm} (la vigilancia sigue).", LogKind.Warn);
     }
@@ -923,9 +929,22 @@ public sealed class MainForm : Form
 
     private void SetTrayAlert(bool alert)
     {
+        _trayAlerting = alert;
+        RefreshTrayIcon();
+    }
+
+    private void RefreshTrayIcon()
+    {
         try
         {
-            _tray.Icon = alert ? _iconAlert : _iconNormal;
+            var icon = _trayAlerting
+                ? _trayAlert
+                : _snoozeUntilTicks > DateTime.UtcNow.Ticks
+                    ? _traySnooze
+                    : _cts is not null ? _trayRunning : _trayStopped;
+
+            if (icon is not null && !ReferenceEquals(_tray.Icon, icon))
+                _tray.Icon = icon;
         }
         catch
         {
