@@ -18,3 +18,10 @@ alerttest-log.txt
 .vs/
 *.user
 *.suo
+
+# App compilada y datos locales (no subir)
+/InditexStockAlarm.exe
+*.pdb
+/LEEME.txt
+/settings-preview.png
+
