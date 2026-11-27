@@ -35,6 +35,7 @@ public sealed class MainForm : Form
     private bool _allowFast;
     private bool _schedulePaused;
     private string? _updateTag;
+    private bool _updatePrompted;
 
     private Label _pill = null!;
     private Label _foot = null!;
@@ -155,6 +156,16 @@ public sealed class MainForm : Form
             _updateTag = tag;
             Log($"Nueva versión disponible: v{tag}" + (string.IsNullOrEmpty(url) ? "" : $" → {url}"), LogKind.Warn);
             UpdateFooter();
+
+            if (!_updatePrompted && !string.IsNullOrEmpty(url))
+            {
+                _updatePrompted = true;
+                BeginInvoke(new Action(() =>
+                {
+                    using var dialog = new UpdateDialog(tag!, url!);
+                    dialog.ShowDialog(this);
+                }));
+            }
         }
         catch
         {
@@ -686,22 +697,36 @@ public sealed class MainForm : Form
     private void AddItem()
     {
         using var dialog = new AddItemDialog(ProbeSizesAsync);
-        if (dialog.ShowDialog(this) != DialogResult.OK || dialog.Result is null) return;
+        if (dialog.ShowDialog(this) != DialogResult.OK || dialog.Results.Count == 0) return;
 
-        var cfg = dialog.Result;
-        if (_items.Any(i => string.Equals(i.Config.Url, cfg.Url, StringComparison.OrdinalIgnoreCase)))
+        var added = 0;
+        var skipped = 0;
+
+        foreach (var cfg in dialog.Results)
         {
-            MessageBox.Show(this, "Ese producto ya está en la lista.", "Duplicado",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (_items.Any(i => string.Equals(i.Config.Url, cfg.Url, StringComparison.OrdinalIgnoreCase)))
+            {
+                skipped++;
+                continue;
+            }
+
+            var item = new MonitorItem(cfg);
+            _items.Add(item);
+            _config.Items.Add(cfg);
+            added++;
+            Log($"Producto añadido: {item.DisplayName} · tallas {string.Join(",", item.Sizes)}", LogKind.Ok);
+        }
+
+        if (added == 0)
+        {
+            MessageBox.Show(this, skipped > 0 ? "Ese producto ya está en la lista." : "No se añadió ninguno.",
+                "Sin cambios", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
-        var item = new MonitorItem(cfg);
-        _items.Add(item);
-        _config.Items.Add(cfg);
         _config.Save(AppPaths.DataDir);
         RefreshItems();
-        Log($"Producto añadido: {item.DisplayName} · tallas {string.Join(",", item.Sizes)}", LogKind.Ok);
+        UpdateFooter();
     }
 
     internal async Task<SizeProbeResult> ProbeSizesAsync(string url)
@@ -1076,6 +1101,44 @@ public sealed class MainForm : Form
         }
     }
 
+    private async Task RecoverBrowserAsync(CancellationToken ct)
+    {
+        try
+        {
+            Log("Watchdog: reiniciando Edge y pestañas…", LogKind.Warn);
+
+            foreach (var item in _items)
+            {
+                var page = item.Page;
+                item.Page = null;
+                if (page is null) continue;
+                try
+                {
+                    await page.DisposeAsync();
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+
+            _edge?.KillBrowser();
+            _edge = null;
+
+            var edgePath = EdgeCdp.FindEdge();
+            var first = _items.FirstOrDefault(i => !i.Paused) ?? _items.FirstOrDefault();
+            if (edgePath is null || first is null) return;
+
+            _edge = new EdgeCdp(edgePath, Path.Combine(AppPaths.DataDir, "edge-profile"));
+            await _edge.StartAsync(first.Config.Url, ct, HeadlessArgs);
+            Log("Watchdog: Edge reiniciado.", LogKind.Ok);
+        }
+        catch (Exception ex)
+        {
+            Log("Watchdog: no pude reiniciar Edge: " + ex.Message, LogKind.Error);
+        }
+    }
+
     private async Task StopMonitorAsync()
     {
         var cts = _cts;
@@ -1183,6 +1246,9 @@ public sealed class MainForm : Form
                 _checks++;
                 _lastCheckUtc = DateTime.UtcNow;
                 await ApplyResultsAsync(results, ct);
+
+                if (_failStreak == 3)
+                    await RecoverBrowserAsync(ct);
             }
             catch (OperationCanceledException)
             {
@@ -1192,6 +1258,8 @@ public sealed class MainForm : Form
             {
                 _failStreak++;
                 Log($"Fallo de comprobación ({_failStreak}): {ex.Message}", LogKind.Error);
+                if (_failStreak == 3)
+                    await RecoverBrowserAsync(ct);
                 if (_failStreak == 20)
                     Log("⚠ 20 fallos seguidos: revisa que Edge siga abierto y sin bloqueos.", LogKind.Warn);
             }

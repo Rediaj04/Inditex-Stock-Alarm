@@ -1,0 +1,49 @@
+name: probe
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 7 * * 1'
+
+jobs:
+  probe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publicar
+        run: dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o probe
+
+      - name: Comprobar fichas reales
+        shell: pwsh
+        run: |
+          $urls = @(
+            'https://www.bershka.com/es/jeans-barrel-c0p229733871.html?colorId=428',
+            'https://www.zara.com/es/es/camiseta-tank-rib-basica-p04087450.html',
+            'https://www.pullandbear.com/es/sudadera-cuello-cremallera-l07558508?pelement=748920134&cS=485',
+            'https://www.stradivarius.com/es/camiseta-de-punto-cuello-redondo-l06535501'
+          )
+
+          $fail = 0
+          foreach ($u in $urls) {
+            Remove-Item '.\probe\probe.txt' -ErrorAction SilentlyContinue
+            Start-Process -FilePath '.\probe\InditexStockAlarm.exe' -ArgumentList "--probe=$u" -Wait
+            Start-Sleep -Seconds 1
+
+            $file = '.\probe\probe.txt'
+            if (-not (Test-Path $file)) {
+              Write-Host "SIN RESULTADO: $u"
+              $fail++
+              continue
+            }
+
+            $r = Get-Content $file -Raw | ConvertFrom-Json
+            Write-Host "$u -> ok=$($r.Ok) reason=$($r.Reason) tallas=$($r.Sizes.Count)"
+            if (-not $r.Ok) { $fail++ }
+          }
+
+          if ($fail -gt 0) { throw "$fail ficha(s) sin tallas" }

@@ -13,14 +13,14 @@ public sealed class AddItemDialog : Form
     private readonly CheckedListBox _list;
     private readonly List<SizeProbe> _probed = new();
 
-    public ItemConfig? Result { get; private set; }
+    public List<ItemConfig> Results { get; } = new();
 
     public AddItemDialog(Func<string, Task<SizeProbeResult>>? probe = null)
     {
         _probe = probe;
 
         Text = "Añadir producto";
-        ClientSize = new Size(780, 600);
+        ClientSize = new Size(780, 650);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -40,8 +40,8 @@ public sealed class AddItemDialog : Form
 
         Controls.Add(new Label
         {
-            Text = "Pega la URL de la ficha y pulsa «Buscar tallas».\n" +
-                   "Vale cualquier ficha de Inditex (Bershka, Zara, Oysho, Stradivarius…).",
+            Text = "Pega una URL por línea (varias = varios colores) y pulsa «Buscar tallas».\n" +
+                   "Vale cualquier ficha de Inditex (Bershka, Zara, Pull&Bear, Oysho, Stradivarius…).",
             Font = new Font("Segoe UI", 8.75f),
             ForeColor = Color.FromArgb(138, 147, 168),
             AutoSize = true,
@@ -55,11 +55,14 @@ public sealed class AddItemDialog : Form
             BackColor = Color.FromArgb(30, 34, 44),
             ForeColor = Color.White,
             BorderStyle = BorderStyle.FixedSingle,
-            Font = new Font("Consolas", 9.5f)
+            Font = new Font("Consolas", 9.5f),
+            Multiline = true,
+            Height = 64,
+            ScrollBars = ScrollBars.Vertical
         };
         _url.KeyDown += async (_, e) =>
         {
-            if (e.KeyCode == Keys.Enter && _probe is not null)
+            if (e.Control && e.KeyCode == Keys.Enter && _probe is not null)
             {
                 e.SuppressKeyPress = true;
                 await RunProbeAsync();
@@ -86,7 +89,7 @@ public sealed class AddItemDialog : Form
             ForeColor = Color.FromArgb(138, 147, 168),
             AutoSize = false,
             AutoEllipsis = true,
-            Location = new Point(26, 130),
+            Location = new Point(26, 166),
             Size = new Size(728, 20)
         };
 
@@ -100,13 +103,13 @@ public sealed class AddItemDialog : Form
             Font = new Font("Segoe UI Semibold", 8.75f),
             ForeColor = Color.FromArgb(232, 235, 242),
             AutoSize = true,
-            Location = new Point(26, 158)
+            Location = new Point(26, 194)
         });
 
         _list = new CheckedListBox
         {
-            Location = new Point(26, 182),
-            Size = new Size(728, 150),
+            Location = new Point(26, 218),
+            Size = new Size(728, 140),
             BackColor = Color.FromArgb(30, 34, 44),
             ForeColor = Color.White,
             BorderStyle = BorderStyle.FixedSingle,
@@ -121,7 +124,7 @@ public sealed class AddItemDialog : Form
             Text = "marcar todas",
             AutoSize = true,
             LinkColor = Color.FromArgb(96, 165, 250),
-            Location = new Point(26, 338)
+            Location = new Point(26, 364)
         };
         all.LinkClicked += (_, _) => SetAllChecked(true);
 
@@ -130,7 +133,7 @@ public sealed class AddItemDialog : Form
             Text = "desmarcar",
             AutoSize = true,
             LinkColor = Color.FromArgb(96, 165, 250),
-            Location = new Point(120, 338)
+            Location = new Point(120, 364)
         };
         none.LinkClicked += (_, _) => SetAllChecked(false);
 
@@ -143,12 +146,12 @@ public sealed class AddItemDialog : Form
             Font = new Font("Segoe UI Semibold", 8.75f),
             ForeColor = Color.FromArgb(232, 235, 242),
             AutoSize = true,
-            Location = new Point(26, 366)
+            Location = new Point(26, 392)
         });
 
         _sizesText = new TextBox
         {
-            Location = new Point(26, 390),
+            Location = new Point(26, 416),
             Width = 300,
             BackColor = Color.FromArgb(30, 34, 44),
             ForeColor = Color.White,
@@ -159,7 +162,7 @@ public sealed class AddItemDialog : Form
 
         _name = new TextBox
         {
-            Location = new Point(346, 390),
+            Location = new Point(346, 416),
             Width = 408,
             BackColor = Color.FromArgb(30, 34, 44),
             ForeColor = Color.White,
@@ -177,13 +180,13 @@ public sealed class AddItemDialog : Form
             Font = new Font("Segoe UI", 8.5f),
             ForeColor = Color.FromArgb(138, 147, 168),
             AutoSize = true,
-            Location = new Point(26, 418)
+            Location = new Point(26, 444)
         });
 
         var ok = new Button
         {
             Text = "Añadir y vigilar",
-            Location = new Point(536, 524),
+            Location = new Point(536, 576),
             Size = new Size(218, 46),
             BackColor = Color.FromArgb(64, 214, 128),
             ForeColor = Color.FromArgb(8, 28, 17),
@@ -197,7 +200,7 @@ public sealed class AddItemDialog : Form
         var cancel = new Button
         {
             Text = "Cancelar",
-            Location = new Point(420, 524),
+            Location = new Point(420, 576),
             Size = new Size(106, 46),
             BackColor = Color.FromArgb(30, 34, 44),
             ForeColor = Color.White,
@@ -221,11 +224,14 @@ public sealed class AddItemDialog : Form
             _list.SetItemChecked(i, value);
     }
 
+    private string FirstUrl() =>
+        _url.Lines.Select(l => l.Trim()).FirstOrDefault(l => l.Length > 0) ?? "";
+
     private async Task RunProbeAsync()
     {
         if (_probe is null) return;
 
-        var url = _url.Text.Trim();
+        var url = FirstUrl();
         if (!ItemUrl.TryParse(url, out _, out var error))
         {
             _status.ForeColor = Color.FromArgb(255, 120, 140);
@@ -278,12 +284,29 @@ public sealed class AddItemDialog : Form
 
     private void TryAccept()
     {
-        var url = _url.Text.Trim();
-        if (!ItemUrl.TryParse(url, out _, out var error))
+        var urls = _url.Lines
+            .Select(l => l.Trim())
+            .Where(l => l.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (urls.Count == 0)
         {
-            MessageBox.Show(this, error, "URL no válida", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, "Pega al menos una URL.", "Falta la URL",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
             _url.Focus();
             return;
+        }
+
+        foreach (var url in urls)
+        {
+            if (!ItemUrl.TryParse(url, out _, out var error))
+            {
+                MessageBox.Show(this, error + Environment.NewLine + Environment.NewLine + url,
+                    "URL no válida", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                _url.Focus();
+                return;
+            }
         }
 
         var chosen = new List<string>();
@@ -304,12 +327,19 @@ public sealed class AddItemDialog : Form
             return;
         }
 
-        Result = new ItemConfig
+        var sizes = string.Join(",", chosen.Distinct(StringComparer.OrdinalIgnoreCase));
+
+        Results.Clear();
+        foreach (var url in urls)
         {
-            Url = url,
-            Sizes = string.Join(",", chosen.Distinct(StringComparer.OrdinalIgnoreCase)),
-            Name = _name.Text.Trim()
-        };
+            Results.Add(new ItemConfig
+            {
+                Url = url,
+                Sizes = sizes,
+                Name = _name.Text.Trim()
+            });
+        }
+
         DialogResult = DialogResult.OK;
     }
 }
