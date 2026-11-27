@@ -71,5 +71,6 @@ public sealed class FastIntervalDialog : Form
         Controls.Add(accept);
         Controls.Add(cancel);
         CancelButton = cancel;
+        Loc.Apply(this);
     }
 }

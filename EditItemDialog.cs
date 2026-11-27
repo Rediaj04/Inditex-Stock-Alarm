@@ -120,6 +120,7 @@ public sealed class EditItemDialog : Form
         AcceptButton = ok;
         CancelButton = cancel;
         ActiveControl = _sizes;
+        Loc.Apply(this);
     }
 
     private void TryAccept()

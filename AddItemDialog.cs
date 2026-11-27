@@ -85,7 +85,7 @@ public sealed class AddItemDialog : Form
 
         _status = new Label
         {
-            Text = _probe is null ? "" : "Pega la URL y pulsa «Buscar tallas».",
+            Text = _probe is null ? "" : Loc.T("Pega la URL y pulsa «Buscar tallas».", "Paste the URL and press «Search sizes»."),
             ForeColor = Color.FromArgb(138, 147, 168),
             AutoSize = false,
             AutoEllipsis = true,
@@ -216,6 +216,7 @@ public sealed class AddItemDialog : Form
         AcceptButton = ok;
         CancelButton = cancel;
         ActiveControl = _url;
+        Loc.Apply(this);
     }
 
     private void SetAllChecked(bool value)
@@ -243,7 +244,7 @@ public sealed class AddItemDialog : Form
         _probeButton.Enabled = false;
         _probeButton.Text = "Buscando…";
         _status.ForeColor = Color.FromArgb(246, 173, 60);
-        _status.Text = "Abriendo la ficha y leyendo tallas… (puede tardar 10-20 s)";
+        _status.Text = Loc.T("Abriendo la ficha y leyendo tallas… (puede tardar 10-20 s)", "Opening the product and reading sizes… (10-20 s)");
 
         try
         {
@@ -257,7 +258,7 @@ public sealed class AddItemDialog : Form
                 foreach (var size in result.Sizes)
                 {
                     _probed.Add(size);
-                    var index = _list.Items.Add($"{size.Size}   ·   {size.Human}");
+                    var index = _list.Items.Add($"{size.Size}   ·   {Loc.T(size.Human)}");
                     _list.SetItemChecked(index, size.State != "SOLD_OUT");
                 }
 
@@ -265,7 +266,7 @@ public sealed class AddItemDialog : Form
                     _name.Text = result.Product!.Trim();
 
                 _status.ForeColor = Color.FromArgb(64, 214, 128);
-                _status.Text = $"Detectadas {result.Sizes.Count} talla(s). Marca las que quieras vigilar.";
+                _status.Text = Loc.T($"Detectadas {result.Sizes.Count} talla(s). Marca las que quieras vigilar.", $"Detected {result.Sizes.Count} size(s). Tick the ones to watch.");
             }
             else
             {

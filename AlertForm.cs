@@ -152,6 +152,7 @@ public sealed class AlertForm : Form
         Controls.Add(silence);
 
         AcceptButton = ok;
+        Loc.Apply(this);
     }
 
     public void AddItem(AlertItem item)

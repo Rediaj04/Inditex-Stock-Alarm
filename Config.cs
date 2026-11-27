@@ -20,6 +20,7 @@ public sealed class AppConfig
     public bool StartMinimized { get; set; }
     public int UiScale { get; set; } = 100;
     public string CustomSoundPath { get; set; } = "";
+    public string Language { get; set; } = "es";
     public List<ItemConfig> Items { get; set; } = new();
 
     private static readonly JsonSerializerOptions WriteOpts = new()

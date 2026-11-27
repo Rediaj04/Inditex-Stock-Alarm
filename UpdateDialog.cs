@@ -6,7 +6,7 @@ public sealed class UpdateDialog : Form
 {
     public UpdateDialog(string version, string url)
     {
-        Text = "Nueva versión disponible";
+        Text = Loc.T("Nueva versión disponible", "New version available");
         ClientSize = new Size(560, 260);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -18,7 +18,7 @@ public sealed class UpdateDialog : Form
 
         Controls.Add(new Label
         {
-            Text = $"Nueva versión v{version} disponible",
+            Text = Loc.T($"Nueva versión v{version} disponible", $"New version v{version} available"),
             Font = new Font("Segoe UI Semibold", 14f),
             ForeColor = Color.White,
             AutoSize = true,

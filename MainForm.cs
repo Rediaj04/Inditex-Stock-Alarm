@@ -58,6 +58,7 @@ public sealed class MainForm : Form
     {
         _config = AppConfig.Load(AppPaths.DataDir);
         _uiScale = Math.Clamp(_config.UiScale, 100, 150) / 100f;
+        Loc.English = string.Equals(_config.Language, "en", StringComparison.OrdinalIgnoreCase);
         _allowFast = _config.AllowFastInterval;
         _intervalSec = Math.Clamp(_config.IntervalSeconds, _allowFast ? 5 : 15, 120);
         _soundEnabled = _config.SoundEnabled;
@@ -102,7 +103,7 @@ public sealed class MainForm : Form
         _snoozeTimer.Tick += (_, _) =>
         {
             _snoozeTimer.Stop();
-            _btnSnooze.Text = "Snooze 30m";
+            _btnSnooze.Text = Loc.T("Snooze 30m", "Snooze 30m");
             if (_cts is not null) SetPill("● VIGILANDO", Palette.Green, Palette.GreenBg);
             Log("Snooze terminado: vuelven los avisos.", LogKind.Info);
         };
@@ -235,6 +236,7 @@ public sealed class MainForm : Form
         Controls.Add(_content);
         PositionContent();
         ResumeLayout();
+        Loc.Apply(this);
     }
 
     private void PositionContent()
@@ -253,7 +255,7 @@ public sealed class MainForm : Form
         if (WindowState == FormWindowState.Minimized)
         {
             Hide();
-            _tray.ShowBalloonTip(2500, "Inditex Stock Alarm", "Sigue vigilando en segundo plano.", ToolTipIcon.Info);
+            _tray.ShowBalloonTip(2500, "Inditex Stock Alarm", Loc.T("Sigue vigilando en segundo plano.", "Still watching in the background."), ToolTipIcon.Info);
         }
     }
 
@@ -404,7 +406,7 @@ public sealed class MainForm : Form
     private void ApplySoundState()
     {
         _alarm.Enabled = _soundEnabled;
-        _btnSound.Text = _soundEnabled ? "Sonido: ON" : "Sonido: OFF";
+        _btnSound.Text = Loc.T(_soundEnabled ? "Sonido: ON" : "Sonido: OFF", _soundEnabled ? "Sound: ON" : "Sound: OFF");
         _btnSound.BackColor = Palette.Chip;
         _btnSound.ForeColor = _soundEnabled ? Palette.Green : Palette.Muted;
     }
@@ -475,6 +477,7 @@ public sealed class MainForm : Form
         _config.AlertScreen = dialog.AlertScreen;
         _config.StartMinimized = dialog.StartMinimized;
         _config.CustomSoundPath = dialog.CustomSoundPath;
+        _config.Language = dialog.Language;
         _config.UiScale = dialog.UiScale;
         _config.Save(AppPaths.DataDir);
 
@@ -501,7 +504,7 @@ public sealed class MainForm : Form
             _allowFast = true;
             _num.Minimum = 5;
             _config.AllowFastInterval = true;
-            _btnLock.Text = "🔓 mín. 5 s";
+            _btnLock.Text = Loc.T("🔓 mín. 5 s", "🔓 min. 5 s");
             _btnLock.ForeColor = Palette.Amber;
             Log("¡Mínimo desbloqueado! Ya puedes bajar de 15 s. Bajo tu responsabilidad.", LogKind.Warn);
         }
@@ -511,7 +514,7 @@ public sealed class MainForm : Form
             _num.Minimum = 15;
             if (_num.Value < 15) _num.Value = 15;
             _config.AllowFastInterval = false;
-            _btnLock.Text = "🔒 mín. 15 s";
+            _btnLock.Text = Loc.T("🔒 mín. 15 s", "🔒 min. 15 s");
             _btnLock.ForeColor = Palette.Muted;
             Log("Mínimo bloqueado de nuevo en 15 s.", LogKind.Info);
         }
@@ -672,14 +675,14 @@ public sealed class MainForm : Form
     private NotifyIcon BuildTray()
     {
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Mostrar ventana", null, (_, _) => ShowFromTray());
-        menu.Items.Add("Iniciar / Detener", null, async (_, _) =>
+        menu.Items.Add(Loc.T("Mostrar ventana", "Show window"), null, (_, _) => ShowFromTray());
+        menu.Items.Add(Loc.T("Iniciar / Detener", "Start / Stop"), null, async (_, _) =>
         {
             if (_cts is null) await StartMonitorAsync();
             else await StopMonitorAsync();
         });
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Salir", null, (_, _) => Close());
+        menu.Items.Add(Loc.T("Salir", "Exit"), null, (_, _) => Close());
 
         var tray = new NotifyIcon
         {
@@ -771,14 +774,14 @@ public sealed class MainForm : Form
     {
         var allPaused = members.All(m => m.Paused);
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Comprobar ahora", null, (_, _) =>
+        menu.Items.Add(Loc.T("Comprobar ahora", "Check now"), null, (_, _) =>
         {
             foreach (var member in members) CheckNow(member);
         });
-        menu.Items.Add("Editar tallas / nombre…", null, (_, _) => EditMembers(members));
-        menu.Items.Add(allPaused ? "Reanudar" : "Pausar", null, (_, _) => ToggleMembers(members));
+        menu.Items.Add(Loc.T("Editar tallas / nombre…", "Edit sizes / name…"), null, (_, _) => EditMembers(members));
+        menu.Items.Add(allPaused ? Loc.T("Reanudar", "Resume") : Loc.T("Pausar", "Pause"), null, (_, _) => ToggleMembers(members));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Eliminar", null, async (_, _) => await RemoveMembersAsync(members));
+        menu.Items.Add(Loc.T("Eliminar", "Delete"), null, async (_, _) => await RemoveMembersAsync(members));
         menu.Show(anchor, new Point(0, anchor.Height));
     }
 
@@ -859,7 +862,7 @@ public sealed class MainForm : Form
         {
             _snoozeUntilTicks = 0;
             _snoozeTimer.Stop();
-            _btnSnooze.Text = "Snooze 30m";
+            _btnSnooze.Text = Loc.T("Snooze 30m", "Snooze 30m");
             if (_cts is not null) SetPill("● VIGILANDO", Palette.Green, Palette.GreenBg);
             Log("Snooze cancelado: vuelven los avisos.", LogKind.Info);
             return;
@@ -868,7 +871,7 @@ public sealed class MainForm : Form
         _snoozeUntilTicks = DateTime.UtcNow.AddMinutes(30).Ticks;
         _alarm.Silence();
         _btnSilence.Enabled = false;
-        _btnSnooze.Text = "Quitar snooze";
+        _btnSnooze.Text = Loc.T("Quitar snooze", "Cancel snooze");
         if (_cts is not null) SetPill("● SNOOZE 30 MIN", Palette.Amber, Palette.AmberBg);
         Log($"Avisos silenciados hasta las {DateTime.Now.AddMinutes(30):HH:mm} (la vigilancia sigue).", LogKind.Warn);
         _snoozeTimer.Stop();
@@ -936,7 +939,7 @@ public sealed class MainForm : Form
         if (members.All(m => m.Paused))
         {
             color = Palette.Muted;
-            return "PAUSADO";
+            return Loc.T("PAUSADO", "PAUSED");
         }
 
         var available = members.Where(m => m.Available).ToList();
@@ -946,10 +949,12 @@ public sealed class MainForm : Form
             if (available.Count == 1)
             {
                 var name = available[0].ColorName;
-                return string.IsNullOrWhiteSpace(name) ? "DISPONIBLE" : "DISPONIBLE · " + name;
+                return string.IsNullOrWhiteSpace(name)
+                    ? Loc.T("DISPONIBLE", "IN STOCK")
+                    : Loc.T("DISPONIBLE", "IN STOCK") + " · " + name;
             }
 
-            return $"DISPONIBLE · {available.Count} colores";
+            return Loc.T($"DISPONIBLE · {available.Count} colores", $"IN STOCK · {available.Count} colours");
         }
 
         if (members.Any(m => m.LastError is not null))
@@ -959,7 +964,9 @@ public sealed class MainForm : Form
         }
 
         color = Palette.Muted;
-        return members.Any(m => string.IsNullOrEmpty(m.LastError)) ? "agotada" : "—";
+        return members.Any(m => string.IsNullOrEmpty(m.LastError))
+            ? Loc.T("agotada", "sold out")
+            : "—";
     }
 
     private void RefreshItems()
@@ -1057,7 +1064,7 @@ public sealed class MainForm : Form
 
         var mid = new Label
         {
-            Text = "tallas " + string.Join(",", item.Sizes)
+            Text = Loc.T("tallas ", "sizes ") + string.Join(",", item.Sizes)
                    + (string.IsNullOrWhiteSpace(item.PriceText) ? "" : " · " + item.PriceText),
             Font = subFont,
             ForeColor = Palette.Muted,
@@ -1201,7 +1208,7 @@ public sealed class MainForm : Form
 
             row.Name.Text = first.DisplayName;
             row.Sub.Text = colorSummary;
-            row.Mid.Text = "tallas " + string.Join(",", first.Sizes)
+            row.Mid.Text = Loc.T("tallas ", "sizes ") + string.Join(",", first.Sizes)
                            + (price.Length > 0 ? " · " + price : "");
             row.Status.Text = GroupStatus(members, out var statusColor);
             row.Status.ForeColor = statusColor;
@@ -1252,7 +1259,7 @@ public sealed class MainForm : Form
             NativeMethods.KeepAwake(true);
             _loop = LoopAsync(ct);
 
-            _btnToggle.Text = "■  DETENER";
+            _btnToggle.Text = Loc.T("■  DETENER", "■  STOP");
             _btnToggle.BackColor = Palette.Red;
             _btnToggle.ForeColor = Color.White;
             SetPill("● VIGILANDO", Palette.Green, Palette.GreenBg);
@@ -1348,7 +1355,7 @@ public sealed class MainForm : Form
         NativeMethods.KeepAwake(false);
         cts.Dispose();
 
-        _btnToggle.Text = "▶  INICIAR";
+        _btnToggle.Text = Loc.T("▶  INICIAR", "▶  START");
         _btnToggle.BackColor = Palette.Green;
         _btnToggle.ForeColor = Color.FromArgb(8, 28, 17);
         _num.Enabled = true;
@@ -1650,7 +1657,7 @@ public sealed class MainForm : Form
                 new[]
                 {
                     string.IsNullOrWhiteSpace(item.ColorName) ? null : item.ColorName,
-                    "tallas " + string.Join(",", item.Sizes),
+                    Loc.T("tallas ", "sizes ") + string.Join(",", item.Sizes),
                     string.IsNullOrWhiteSpace(item.PriceText) ? null : item.PriceText
                 }.Where(x => x is not null));
 
@@ -1696,7 +1703,7 @@ public sealed class MainForm : Form
             new[]
             {
                 string.IsNullOrWhiteSpace(item.ColorName) ? null : item.ColorName,
-                "tallas " + string.Join(",", item.Sizes)
+                Loc.T("tallas ", "sizes ") + string.Join(",", item.Sizes)
             }.Where(x => x is not null));
 
         var sizesAvailable = item.StatusText;
@@ -1937,6 +1944,7 @@ public sealed class MainForm : Form
 
     private void SetPill(string text, Color fore, Color back)
     {
+        text = Loc.T(text);
         void Apply()
         {
             _pill.Text = text;
@@ -1962,7 +1970,7 @@ public sealed class MainForm : Form
         else Apply();
 
         var available = _items.Count(i => i.Available);
-        var tip = $"Inditex · {_items.Count} producto(s) · {available} disponible(s)";
+        var tip = Loc.T($"Inditex · {_items.Count} producto(s) · {available} disponible(s)", $"Inditex · {_items.Count} product(s) · {available} available");
         if (tip.Length > 63) tip = tip[..63];
         try
         {

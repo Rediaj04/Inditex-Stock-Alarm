@@ -17,6 +17,7 @@ public sealed class SettingsDialog : Form
     private readonly CheckBox _startup;
     private readonly CheckBox _startMinimized;
     private readonly ComboBox _scale;
+    private readonly ComboBox _language;
     private readonly Button _customButton;
     private readonly Label _customLabel;
     private string _customPath = "";
@@ -34,13 +35,15 @@ public sealed class SettingsDialog : Form
     public bool StartMinimized => _startMinimized.Checked;
     public int UiScale => _scale.SelectedIndex == 2 ? 150 : _scale.SelectedIndex == 1 ? 125 : 100;
     public string CustomSoundPath => _customPath;
+    public string Language => _language.SelectedIndex == 1 ? "en" : "es";
 
     public SettingsDialog(AppConfig config, bool startWithWindows = false)
     {
         _originalTheme = config.Theme;
+        Loc.English = string.Equals(config.Language, "en", StringComparison.OrdinalIgnoreCase);
 
         Text = "Ajustes";
-        ClientSize = new Size(700, 660);
+        ClientSize = new Size(700, 760);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -235,6 +238,30 @@ public sealed class SettingsDialog : Form
 
         y += 36;
 
+        Controls.Add(Header("Idioma / Language", ref y));
+
+        _language = new ComboBox
+        {
+            Location = new Point(30, y),
+            Width = 160,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = Color.FromArgb(30, 34, 44),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat
+        };
+        _language.Items.AddRange(new object[] { "Español", "English" });
+        _language.SelectedIndex = string.Equals(config.Language, "en", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        Controls.Add(_language);
+        Controls.Add(new Label
+        {
+            Text = Loc.T("Se aplica al reiniciar la app.", "Applies on restart."),
+            AutoSize = true,
+            ForeColor = Color.FromArgb(138, 147, 168),
+            Location = new Point(206, y + 4)
+        });
+
+        y += 36;
+
         Controls.Add(Header("Pantalla de la alerta", ref y));
 
         _screen = new ComboBox
@@ -252,7 +279,7 @@ public sealed class SettingsDialog : Form
         for (var i = 0; i < screens.Length; i++)
         {
             var s = screens[i];
-            _screen.Items.Add($"Pantalla {i + 1}{(s.Primary ? " · principal" : "")} ({s.Bounds.Width}×{s.Bounds.Height})");
+            _screen.Items.Add(Loc.T($"Pantalla {i + 1}{(s.Primary ? " · principal" : "")} ({s.Bounds.Width}×{s.Bounds.Height})", $"Screen {i + 1}{(s.Primary ? " · primary" : "")} ({s.Bounds.Width}×{s.Bounds.Height})"));
         }
 
         _screen.SelectedIndex = config.AlertScreen >= 0 && config.AlertScreen < screens.Length
@@ -262,7 +289,7 @@ public sealed class SettingsDialog : Form
         Controls.Add(_screen);
         Controls.Add(new Label
         {
-            Text = $"Detectadas {screens.Length} pantalla(s). La ventana saldrá centrada.",
+            Text = Loc.T($"Detectadas {screens.Length} pantalla(s). La ventana saldrá centrada.", $"Detected {screens.Length} screen(s). The alert will be centred."),
             AutoSize = true,
             ForeColor = Color.FromArgb(138, 147, 168),
             Location = new Point(360, y + 4)
@@ -291,7 +318,7 @@ public sealed class SettingsDialog : Form
         var ok = new Button
         {
             Text = "Guardar",
-            Location = new Point(470, 594),
+            Location = new Point(470, 694),
             Size = new Size(200, 44),
             BackColor = Color.FromArgb(64, 214, 128),
             ForeColor = Color.FromArgb(8, 28, 17),
@@ -305,7 +332,7 @@ public sealed class SettingsDialog : Form
         var cancel = new Button
         {
             Text = "Cancelar",
-            Location = new Point(360, 594),
+            Location = new Point(360, 694),
             Size = new Size(100, 44),
             BackColor = Color.FromArgb(30, 34, 44),
             ForeColor = Color.White,
@@ -319,6 +346,7 @@ public sealed class SettingsDialog : Form
         Controls.Add(cancel);
         AcceptButton = ok;
         CancelButton = cancel;
+        Loc.Apply(this);
     }
 
     private static Label Header(string text, ref int y)
