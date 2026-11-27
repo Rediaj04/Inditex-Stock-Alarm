@@ -13,6 +13,7 @@ public sealed class SettingsDialog : Form
     private readonly TextBox _end;
     private readonly CheckBox _gentle;
     private readonly ComboBox _theme;
+    private readonly CheckBox _startup;
 
     public string SoundMode => SoundValues[Math.Max(0, _sound.SelectedIndex)];
     public string NtfyTopic => _ntfy.Text.Trim();
@@ -22,13 +23,14 @@ public sealed class SettingsDialog : Form
     public bool GentleMode => _gentle.Checked;
     public string Theme => _theme.SelectedIndex == 1 ? "light" : "dark";
     public bool ThemeChanged => !string.Equals(Theme, _originalTheme, StringComparison.OrdinalIgnoreCase);
+    public bool StartWithWindows => _startup.Checked;
 
-    public SettingsDialog(AppConfig config)
+    public SettingsDialog(AppConfig config, bool startWithWindows = false)
     {
         _originalTheme = config.Theme;
 
         Text = "Ajustes";
-        ClientSize = new Size(700, 470);
+        ClientSize = new Size(700, 500);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -169,10 +171,20 @@ public sealed class SettingsDialog : Form
             Location = new Point(224, y + 4)
         });
 
+        _startup = new CheckBox
+        {
+            Text = "Iniciar con Windows",
+            Checked = startWithWindows,
+            AutoSize = true,
+            ForeColor = Color.White,
+            Location = new Point(30, y + 38)
+        };
+        Controls.Add(_startup);
+
         var ok = new Button
         {
             Text = "Guardar",
-            Location = new Point(470, 404),
+            Location = new Point(470, 434),
             Size = new Size(200, 44),
             BackColor = Color.FromArgb(64, 214, 128),
             ForeColor = Color.FromArgb(8, 28, 17),
@@ -186,7 +198,7 @@ public sealed class SettingsDialog : Form
         var cancel = new Button
         {
             Text = "Cancelar",
-            Location = new Point(360, 404),
+            Location = new Point(360, 434),
             Size = new Size(100, 44),
             BackColor = Color.FromArgb(30, 34, 44),
             ForeColor = Color.White,

@@ -44,10 +44,10 @@ public sealed class MainForm : Form
     private Button _btnSilence = null!;
     private Button _btnSound = null!;
     private Button _btnLock = null!;
-    private Button _btnStartup = null!;
     private Button _btnSnooze = null!;
     private NumericUpDown _num = null!;
     private RichTextBox _log = null!;
+    private TableLayoutPanel _root = null!;
     private FlowLayoutPanel _itemsPanel = null!;
     private Label _itemsEmpty = null!;
 
@@ -204,6 +204,7 @@ public sealed class MainForm : Form
             RowCount = 5,
             BackColor = Palette.Bg
         };
+        _root = root;
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -256,7 +257,7 @@ public sealed class MainForm : Form
         };
         header.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
 
         var left = new Panel { Dock = DockStyle.Fill, BackColor = Palette.Bg };
         left.Controls.Add(new Label
@@ -286,7 +287,7 @@ public sealed class MainForm : Form
         _pill = new Label
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(0, 4, 0, 4),
+            Margin = new Padding(0, 10, 0, 10),
             Text = "● DETENIDO",
             TextAlign = ContentAlignment.MiddleCenter,
             Font = new Font("Segoe UI Semibold", 9.5f),
@@ -321,7 +322,8 @@ public sealed class MainForm : Form
             Minimum = _allowFast ? 5 : 15,
             Maximum = 120,
             Value = Math.Clamp(_intervalSec, _allowFast ? 5 : 15, 120),
-            Width = 96,
+            Width = 118,
+            TextAlign = HorizontalAlignment.Center,
             Height = 30,
             Margin = new Padding(12, 8, 4, 0),
             BackColor = Palette.Card,
@@ -430,20 +432,6 @@ public sealed class MainForm : Form
         }
     }
 
-    private void ApplyStartupState()
-    {
-        var on = File.Exists(StartupShortcutPath);
-        _btnStartup.Text = "Inicio con Windows: " + (on ? "ON" : "OFF");
-        _btnStartup.ForeColor = on ? Palette.Green : Palette.Muted;
-        _btnStartup.BackColor = on ? Palette.GreenBg : Palette.Chip;
-    }
-
-    private void ToggleStartup()
-    {
-        SetStartup(!File.Exists(StartupShortcutPath));
-        ApplyStartupState();
-    }
-
     private int EffectiveInterval => _config.GentleMode ? Math.Max(_intervalSec, 45) : _intervalSec;
 
     private bool InSchedule()
@@ -460,7 +448,7 @@ public sealed class MainForm : Form
 
     private void OpenSettings()
     {
-        using var dialog = new SettingsDialog(_config);
+        using var dialog = new SettingsDialog(_config, File.Exists(StartupShortcutPath));
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
         _config.SoundMode = dialog.SoundMode;
@@ -473,6 +461,10 @@ public sealed class MainForm : Form
         _config.Save(AppPaths.DataDir);
 
         _alarm.Mode = _config.SoundMode;
+
+        if (dialog.StartWithWindows != File.Exists(StartupShortcutPath))
+            SetStartup(dialog.StartWithWindows);
+
         Log("Ajustes guardados.", LogKind.Ok);
         UpdateFooter();
 
@@ -535,18 +527,7 @@ public sealed class MainForm : Form
         add.Click += (_, _) => AddItem();
         head.Controls.Add(add);
 
-        _btnStartup = MakeButton("", Palette.Chip, Palette.Muted, 212);
-        _btnStartup.Height = 26;
-        _btnStartup.Font = new Font("Segoe UI Semibold", 9f);
-        _btnStartup.Click += (_, _) => ToggleStartup();
-        head.Controls.Add(_btnStartup);
-        ApplyStartupState();
-
-        head.Resize += (_, _) =>
-        {
-            add.Location = new Point(head.ClientSize.Width - add.Width, 0);
-            _btnStartup.Location = new Point(add.Left - _btnStartup.Width - 14, 0);
-        };
+        head.Resize += (_, _) => add.Location = new Point(head.ClientSize.Width - add.Width, 0);
 
         _itemsPanel = new FlowLayoutPanel
         {
@@ -626,7 +607,24 @@ public sealed class MainForm : Form
             }
         };
         head.Controls.Add(link);
-        head.Resize += (_, _) => link.Location = new Point(head.ClientSize.Width - link.Width, 3);
+
+        var clear = new LinkLabel
+        {
+            Text = "limpiar",
+            AutoSize = true,
+            Font = new Font("Segoe UI", 8.5f),
+            LinkColor = Palette.Muted,
+            ActiveLinkColor = Palette.Text,
+            Location = new Point(200, 3)
+        };
+        clear.LinkClicked += (_, _) => _log.Clear();
+        head.Controls.Add(clear);
+
+        head.Resize += (_, _) =>
+        {
+            link.Location = new Point(head.ClientSize.Width - link.Width, 3);
+            clear.Location = new Point(link.Left - clear.Width - 16, 3);
+        };
 
         panel.Controls.Add(_log);
         panel.Controls.Add(head);
@@ -905,7 +903,16 @@ public sealed class MainForm : Form
 
         _itemsPanel.ResumeLayout();
         ReflowRows();
+        UpdateItemsHeight();
         UpdateFooter();
+    }
+
+    private void UpdateItemsHeight()
+    {
+        if (_root is null) return;
+
+        var height = Math.Min(230, Math.Max(96, 50 + _items.Count * 74));
+        _root.RowStyles[2].Height = height;
     }
 
     private Control BuildRow(MonitorItem item)
@@ -968,19 +975,6 @@ public sealed class MainForm : Form
             Size = new Size(300, statusHeight)
         };
 
-        var remove = new Button
-        {
-            Text = "✕",
-            Size = new Size(28, 28),
-            BackColor = Palette.Card,
-            ForeColor = Palette.Muted,
-            FlatStyle = FlatStyle.Flat,
-            Cursor = Cursors.Hand,
-            TabStop = false
-        };
-        remove.FlatAppearance.BorderSize = 0;
-        remove.Click += (_, _) => RemoveItem(item);
-
         var menu = new Button
         {
             Text = "⋯",
@@ -994,14 +988,12 @@ public sealed class MainForm : Form
         menu.FlatAppearance.BorderSize = 0;
         menu.Click += (_, _) => ShowItemMenu(item, menu);
 
-        panel.Controls.AddRange(new Control[] { name, sub, status, menu, remove });
+        panel.Controls.AddRange(new Control[] { name, sub, status, menu });
 
         void LayoutRow()
         {
             var width = panel.ClientSize.Width;
-            var removeX = Math.Max(40, width - remove.Width - 10);
-            remove.Location = new Point(removeX, Math.Max(0, (panel.Height - remove.Height) / 2));
-            menu.Location = new Point(Math.Max(10, removeX - menu.Width - 4), Math.Max(0, (panel.Height - menu.Height) / 2));
+            menu.Location = new Point(Math.Max(10, width - menu.Width - 10), Math.Max(0, (panel.Height - menu.Height) / 2));
 
             var statusX = Math.Max(150, Math.Min(width / 2, width - 260));
             name.Width = Math.Max(80, statusX - 30);
@@ -1016,7 +1008,7 @@ public sealed class MainForm : Form
         panel.Resize += (_, _) => LayoutRow();
         LayoutRow();
 
-        _rows[item.Config.Url] = new ItemRow(name, sub, status, panel, remove, menu);
+        _rows[item.Config.Url] = new ItemRow(name, sub, status, panel, menu);
         return panel;
     }
 
@@ -1857,7 +1849,7 @@ public sealed class MainForm : Form
         else Apply();
     }
 
-    private sealed record ItemRow(Label Name, Label Sub, Label Status, Panel Panel, Button Remove, Button Menu);
+    private sealed record ItemRow(Label Name, Label Sub, Label Status, Panel Panel, Button Menu);
 
     private enum LogKind
     {
